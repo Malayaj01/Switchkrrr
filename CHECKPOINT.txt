@@ -1,0 +1,125 @@
+Switchkrr Checkpoint
+====================
+
+Where we are right now
+----------------------
+- Product direction is finalized: Switchkrr is a mentor-led job switching platform.
+- Tech stack approved and rebuilt from scratch:
+  - Next.js
+  - TypeScript
+  - Prisma
+  - PostgreSQL
+  - Signed HTTP-only session auth
+- Old Vite/Node prototype was removed.
+- New clean codebase is in place.
+- Prisma schema exists for:
+  - users
+  - mentor profiles
+  - candidate profiles
+  - mentor requests
+  - hustles
+  - leads
+  - progress updates
+  - sessions
+- Signup/login backend foundation exists.
+- Candidate and mentor signup forms exist.
+- Basic role-aware dashboard shell exists.
+- Landing page has been redesigned with:
+  - Switchkrr logo on top-left
+  - content sections
+  - full-page animated waves
+  - final Hinglish line: "Chal aaja, switch krte hai"
+- Typecheck and production build are passing.
+- App is currently previewable at:
+  http://127.0.0.1:3001
+
+What we were doing
+------------------
+- We were improving the home/landing page design.
+- We added more content:
+  - About us
+  - Why this
+  - How we help
+  - The concept
+- We discussed adding scroll-reveal animation:
+  - waves unfolding as user scrolls
+  - landing sections animating into view
+- We also clarified an important product rule:
+  - candidate should not see full mentor name/details before approval
+  - candidate should only see anonymized mentor preview before request approval
+
+What is pending
+---------------
+- Real PostgreSQL connection is not set yet.
+- Docker is not installed on this machine, so local Postgres could not be started.
+- Signup/login need a real DATABASE_URL to persist users.
+- Core product workflows are not implemented yet:
+  - candidate profile completion
+  - mentor matching
+  - mentor request approval/decline
+  - automatic Hustle creation
+  - Hustle workspace
+  - lead posting and tracking
+  - admin dashboard
+
+Next: Short Term
+----------------
+1. Connect real PostgreSQL using Supabase or Neon.
+2. Run Prisma db push/migration.
+3. Build candidate profile completion:
+   - resume text/upload placeholder
+   - skills
+   - target companies
+   - preferred domains
+   - location preference
+   - salary range
+   - job type preference
+4. Build mentor matching with private mentor previews.
+5. Build mentor request flow:
+   - candidate sends request
+   - mentor sees pending requests
+   - mentor approves/declines
+6. On approval, auto-create Hustle.
+7. Add scroll reveal animation on landing page:
+   - waves draw/unfold while scrolling
+   - sections fade/slide into view
+
+Next: Long Term
+---------------
+1. Build full Hustle workspace:
+   - mentor posts jobs/leads
+   - mentor adds contacts/emails
+   - mentor adds comments
+   - candidate updates statuses
+   - progress history is tracked
+2. Build mentor dashboard:
+   - pending requests
+   - active Hustles
+   - candidate progress
+   - max 10 active candidates
+3. Build candidate dashboard:
+   - profile status
+   - recommended mentors
+   - pending requests
+   - active Hustles
+   - max 5 active Hustles
+4. Build super admin dashboard:
+   - total users
+   - total mentors
+   - total candidates
+   - total Hustles
+   - total leads
+   - jobs by domain/company
+   - mentor verification queue
+5. Add mentor verification later.
+6. Add LLM resume analysis later.
+7. Add email notifications later.
+8. Add file storage for resumes later.
+9. Deploy publicly using:
+   - Vercel or Render for app
+   - Supabase or Neon for PostgreSQL
+10. Add revenue features later:
+   - candidate premium
+   - paid mentor sessions
+   - AI resume/job match add-ons
+   - company hiring plans

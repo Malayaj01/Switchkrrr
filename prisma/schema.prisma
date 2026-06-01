@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CANDIDATE
+  MENTOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum MentorRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
+enum HustleStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum LeadStatus {
+  TO_APPLY
+  APPLIED
+  CALLBACK
+  INTERVIEW
+  OFFER
+  REJECTED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum JobTypePreference {
+  REMOTE
+  HYBRID
+  ONSITE
+  FLEXIBLE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  role         UserRole
+  name         String
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  mentorProfile    MentorProfile?
+  candidateProfile CandidateProfile?
+  sessions         Session[]
+  createdLeads     Lead[]           @relation("LeadCreator")
+  progressUpdates  ProgressUpdate[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MentorProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  currentCompany     String
+  designation        String
+  yearsExperience    Int
+  domain             String
+  linkedinUrl        String?
+  bio                String?
+  helpCompanies      String[]
+  mentorCode         String             @unique
+  verificationStatus VerificationStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentorRequests   MentorRequest[]
+  hustles          Hustle[]
+}
+
+model CandidateProfile {
+  id                    String             @id @default(cuid())
+  userId                String             @unique
+  currentCompany        String
+  designation           String
+  goalRole              String
+  targetTimeline        DateTime?
+  resumeUrl             String?
+  resumeText            String?
+  skills                String[]
+  yearsExperience       Int?
+  preferredLocations    String[]
+  expectedSalaryMin     Int?
+  expectedSalaryMax     Int?
+  targetCompanies       String[]
+  preferredDomains      String[]
+  jobTypePreference     JobTypePreference?
+  resumeAnalysis        Json?
+  profileCompletedAt    DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentorRequests MentorRequest[]
+  hustles        Hustle[]
+}
+
+model MentorRequest {
+  id               String              @id @default(cuid())
+  candidateId      String
+  mentorId         String
+  status           MentorRequestStatus @default(PENDING)
+  candidateMessage String?
+  mentorResponse   String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  candidate CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  mentor    MentorProfile    @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  hustle    Hustle?
+
+  @@unique([candidateId, mentorId])
+  @@index([mentorId, status])
+  @@index([candidateId, status])
+}
+
+model Hustle {
+  id              String       @id @default(cuid())
+  candidateId     String
+  mentorId        String
+  mentorRequestId String?      @unique
+  status          HustleStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  candidate     CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  mentor        MentorProfile    @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  mentorRequest MentorRequest?   @relation(fields: [mentorRequestId], references: [id], onDelete: SetNull)
+  leads         Lead[]
+
+  @@unique([candidateId, mentorId])
+  @@index([mentorId, status])
+  @@index([candidateId, status])
+}
+
+model Lead {
+  id               String     @id @default(cuid())
+  hustleId         String
+  createdById      String
+  company          String
+  role             String
+  domain           String?
+  location         String?
+  jobLink          String?
+  applicationLink  String?
+  contactName      String?
+  contactEmail     String?
+  priority         Priority   @default(MEDIUM)
+  status           LeadStatus @default(TO_APPLY)
+  mentorComment    String?
+  candidateComment String?
+  followUpDate     DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  hustle          Hustle           @relation(fields: [hustleId], references: [id], onDelete: Cascade)
+  createdBy       User             @relation("LeadCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  progressUpdates ProgressUpdate[]
+
+  @@index([hustleId, status])
+  @@index([company])
+}
+
+model ProgressUpdate {
+  id        String     @id @default(cuid())
+  leadId    String
+  userId    String
+  oldStatus LeadStatus?
+  newStatus LeadStatus
+  note      String?
+  createdAt DateTime   @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+}
