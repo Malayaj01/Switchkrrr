@@ -1,9 +1,10 @@
 import { UserRole } from "@prisma/client";
+import { BriefcaseBusiness, CheckCircle2, Clock3, Handshake, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BriefcaseBusiness, Clock3, Handshake, ShieldCheck, UsersRound } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { getCurrentUser } from "@/lib/security/session";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/security/session";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
     <DashboardShell
       eyebrow="Candidate dashboard"
       title={user.name}
-      subtitle={`${candidate.currentCompany} · Goal: ${candidate.goalRole}`}
+      subtitle={`${candidate.currentCompany} - Goal: ${candidate.goalRole}`}
     >
       <MetricGrid
         metrics={[
@@ -63,10 +64,33 @@ export default async function DashboardPage() {
         ]}
       />
       <section className="dashboard-panel card">
-        <h2>Complete profile</h2>
-        <p className="muted">
-          The next candidate slice will add resume, skills, target companies, location preferences, and mentor matching.
-        </p>
+        <div className="panel-head">
+          <div>
+            <h2>{candidate.profileCompletedAt ? "Profile ready" : "Complete profile"}</h2>
+            <p className="muted">
+              {candidate.profileCompletedAt
+                ? "Your matching details are ready. Next, mentor previews and requests will use this profile."
+                : "Add skills, target companies, domains, location preference, salary range, job type preference, and resume text."}
+            </p>
+          </div>
+          <span className={candidate.profileCompletedAt ? "success-chip" : "status-chip todo"}>
+            {candidate.profileCompletedAt ? <CheckCircle2 size={16} /> : <UserRoundCog size={16} />}
+            {candidate.profileCompletedAt ? "Complete" : "Needs setup"}
+          </span>
+        </div>
+        <div className="profile-summary-grid">
+          <SummaryItem label="Skills" value={candidate.skills.length} />
+          <SummaryItem label="Target companies" value={candidate.targetCompanies.length} />
+          <SummaryItem label="Domains" value={candidate.preferredDomains.length} />
+          <SummaryItem label="Locations" value={candidate.preferredLocations.length} />
+        </div>
+        <div className="panel-actions">
+          <Link className="button" href="/dashboard/profile">
+            <UserRoundCog size={17} />
+            {candidate.profileCompletedAt ? "Edit profile" : "Complete profile"}
+          </Link>
+          {candidate.profileCompletedAt && <span className="next-step-chip">Next: Find mentors</span>}
+        </div>
       </section>
     </DashboardShell>
   );
@@ -125,5 +149,14 @@ function MetricGrid({ metrics }: { metrics: Array<{ icon: React.ReactNode; label
         </article>
       ))}
     </section>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="summary-item">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
   );
 }
