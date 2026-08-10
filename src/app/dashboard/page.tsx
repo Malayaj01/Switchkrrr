@@ -1,10 +1,13 @@
 import { UserRole } from "@prisma/client";
 import { BriefcaseBusiness, CheckCircle2, Clock3, Handshake, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
+
+const mentorRecommendationsRoute = "/dashboard/mentors" as Route;
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -89,7 +92,11 @@ export default async function DashboardPage() {
             <UserRoundCog size={17} />
             {candidate.profileCompletedAt ? "Edit profile" : "Complete profile"}
           </Link>
-          {candidate.profileCompletedAt && <span className="next-step-chip">Next: Find mentors</span>}
+          {candidate.profileCompletedAt && (
+            <Link className="button secondary" href={mentorRecommendationsRoute}>
+              Find mentors
+            </Link>
+          )}
         </div>
       </section>
     </DashboardShell>
