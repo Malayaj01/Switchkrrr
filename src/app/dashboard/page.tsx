@@ -1,13 +1,24 @@
 import { UserRole } from "@prisma/client";
-import { BriefcaseBusiness, CheckCircle2, Clock3, Handshake, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  CheckCircle2,
+  Clock3,
+  Handshake,
+  Inbox,
+  ShieldCheck,
+  UserRoundCog,
+  UsersRound,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { platformLimits } from "@/domain/limits";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 
 const mentorRecommendationsRoute = "/dashboard/mentors" as Route;
+const mentorRequestsRoute = "/dashboard/requests" as Route;
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -25,6 +36,7 @@ export default async function DashboardPage() {
         hustles: { where: { status: "ACTIVE" } },
       },
     });
+    const mentorCapacity = `${mentor.hustles.length} / ${platformLimits.maxActiveHustlesPerMentor}`;
 
     return (
       <DashboardShell eyebrow="Mentor dashboard" title={user.name} subtitle={`Mentor code: ${mentor.mentorCode}`}>
@@ -36,10 +48,24 @@ export default async function DashboardPage() {
           ]}
         />
         <section className="dashboard-panel card">
-          <h2>Next build slice</h2>
-          <p className="muted">
-            Mentor request approval, Hustle list, and lead posting will be implemented on top of this foundation.
-          </p>
+          <div className="panel-head">
+            <div>
+              <h2>Review requests</h2>
+              <p className="muted">
+                Approve strong-fit candidates to start a Hustle, or decline with a short response.
+              </p>
+            </div>
+            <span className="status-chip todo">
+              <UsersRound size={16} />
+              {mentorCapacity} active
+            </span>
+          </div>
+          <div className="panel-actions">
+            <Link className="button" href={mentorRequestsRoute}>
+              <Inbox size={17} />
+              Review requests
+            </Link>
+          </div>
         </section>
       </DashboardShell>
     );
@@ -48,10 +74,23 @@ export default async function DashboardPage() {
   const candidate = await prisma.candidateProfile.findUniqueOrThrow({
     where: { userId: user.id },
     include: {
-      mentorRequests: { where: { status: "PENDING" } },
+      mentorRequests: {
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: {
+          mentor: {
+            select: {
+              domain: true,
+              yearsExperience: true,
+              helpCompanies: true,
+            },
+          },
+        },
+      },
       hustles: { where: { status: "ACTIVE" } },
     },
   });
+  const pendingRequests = candidate.mentorRequests.filter((request) => request.status === "PENDING");
 
   return (
     <DashboardShell
@@ -61,7 +100,7 @@ export default async function DashboardPage() {
     >
       <MetricGrid
         metrics={[
-          { label: "Pending requests", value: candidate.mentorRequests.length, icon: <Clock3 /> },
+          { label: "Pending requests", value: pendingRequests.length, icon: <Clock3 /> },
           { label: "Active Hustles", value: candidate.hustles.length, icon: <Handshake /> },
           { label: "Target companies", value: candidate.targetCompanies.length, icon: <BriefcaseBusiness /> },
         ]}
@@ -98,6 +137,36 @@ export default async function DashboardPage() {
             </Link>
           )}
         </div>
+      </section>
+      <section className="dashboard-panel card">
+        <div className="panel-head">
+          <div>
+            <h2>Mentor requests</h2>
+            <p className="muted">Track the latest requests you have sent to mentor previews.</p>
+          </div>
+          <span className="status-chip todo">
+            <Clock3 size={16} />
+            {pendingRequests.length} pending
+          </span>
+        </div>
+        {candidate.mentorRequests.length > 0 ? (
+          <div className="request-status-list">
+            {candidate.mentorRequests.map((request) => (
+              <div className="request-status-row" key={request.id}>
+                <div>
+                  <strong>{request.mentor.domain} mentor</strong>
+                  <p className="muted">
+                    {toExperienceRange(request.mentor.yearsExperience)} - Helps with{" "}
+                    {request.mentor.helpCompanies.slice(0, 2).join(", ") || "target companies"}
+                  </p>
+                </div>
+                <span className={`request-status-chip ${request.status.toLowerCase()}`}>{formatStatus(request.status)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No mentor requests yet. Complete your profile, then find mentors.</p>
+        )}
       </section>
     </DashboardShell>
   );
@@ -166,4 +235,19 @@ function SummaryItem({ label, value }: { label: string; value: number }) {
       <span>{label}</span>
     </div>
   );
+}
+
+function formatStatus(status: string) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function toExperienceRange(years: number) {
+  if (years >= 10) return "10+ years";
+  if (years >= 7) return "7-9 years";
+  if (years >= 4) return "4-6 years";
+  return "0-3 years";
 }

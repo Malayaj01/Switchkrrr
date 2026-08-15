@@ -109,6 +109,11 @@ p {
   color: var(--brand-dark);
 }
 
+.button.danger-button {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 .card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -616,6 +621,78 @@ p {
   color: #234ca5;
 }
 
+.request-status-chip.approved {
+  background: #dff4e9;
+  color: #17623c;
+}
+
+.request-status-chip.declined,
+.request-status-chip.cancelled {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.request-status-list,
+.request-review-list {
+  display: grid;
+  gap: 12px;
+}
+
+.request-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
+}
+
+.request-status-row p {
+  margin-top: 4px;
+  font-size: 0.86rem;
+}
+
+.request-review-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.request-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.info-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.info-value {
+  font-size: 0.94rem;
+  line-height: 1.35;
+}
+
+.message-block,
+.request-decision-box {
+  display: grid;
+  gap: 9px;
+}
+
+.message-block {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf7;
+  padding: 12px;
+}
+
 .reason-list {
   display: grid;
   gap: 8px;
@@ -1035,7 +1112,8 @@ p {
   .workspace-section,
   .safeguards-section,
   .content-grid,
-  .mentor-preview-grid {
+  .mentor-preview-grid,
+  .request-detail-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1086,6 +1164,11 @@ p {
   }
 
   .lead-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .request-status-row {
     align-items: flex-start;
     flex-direction: column;
   }
