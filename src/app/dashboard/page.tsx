@@ -19,6 +19,7 @@ import { getCurrentUser } from "@/lib/security/session";
 
 const mentorRecommendationsRoute = "/dashboard/mentors" as Route;
 const mentorRequestsRoute = "/dashboard/requests" as Route;
+const hustlesRoute = "/dashboard/hustles" as Route;
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -64,6 +65,10 @@ export default async function DashboardPage() {
             <Link className="button" href={mentorRequestsRoute}>
               <Inbox size={17} />
               Review requests
+            </Link>
+            <Link className="button secondary" href={hustlesRoute}>
+              <Handshake size={17} />
+              Open Hustles
             </Link>
           </div>
         </section>
@@ -134,6 +139,11 @@ export default async function DashboardPage() {
           {candidate.profileCompletedAt && (
             <Link className="button secondary" href={mentorRecommendationsRoute}>
               Find mentors
+            </Link>
+          )}
+          {candidate.hustles.length > 0 && (
+            <Link className="button secondary" href={hustlesRoute}>
+              Open Hustles
             </Link>
           )}
         </div>
