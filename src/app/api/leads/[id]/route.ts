@@ -23,6 +23,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         include: {
           hustle: {
             select: {
+              status: true,
               candidate: {
                 select: {
                   userId: true,
@@ -36,6 +37,9 @@ export async function PATCH(request: Request, context: RouteContext) {
       if (!lead) throw new LeadUpdateError("Lead not found.", 404);
       if (lead.hustle.candidate.userId !== user.id) {
         throw new LeadUpdateError("You can only update leads assigned to your Hustles.", 403);
+      }
+      if (lead.hustle.status !== "ACTIVE") {
+        throw new LeadUpdateError("Lead progress can only be updated in an active Hustle.", 409);
       }
 
       const updatedLead = await tx.lead.update({
@@ -77,4 +81,3 @@ class LeadUpdateError extends Error {
     super(message);
   }
 }
-

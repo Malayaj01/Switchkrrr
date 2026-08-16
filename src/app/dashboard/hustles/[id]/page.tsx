@@ -6,6 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { LeadCreateForm } from "@/components/hustle/lead-create-form";
 import { LeadStatusForm } from "@/components/hustle/lead-status-form";
+import { HustleStatusActions } from "@/components/hustle/hustle-status-actions";
 import { summarizeLeads } from "@/domain/dashboard";
 import {
   describeFollowUp,
@@ -107,7 +108,16 @@ export default async function HustleDetailPage({ params }: PageProps) {
             </div>
           </section>
 
-          {isMentor && <LeadCreateForm hustleId={hustle.id} />}
+          <section className="dashboard-panel card">
+            <p className="eyebrow">Workspace status</p>
+            <h2>{formatEnumLabel(hustle.status)}</h2>
+            <p className="muted">
+              Paused and completed Hustles stay available as history and no longer consume either participant&apos;s capacity.
+            </p>
+            <HustleStatusActions hustleId={hustle.id} status={hustle.status} />
+          </section>
+
+          {isMentor && hustle.status === "ACTIVE" && <LeadCreateForm hustleId={hustle.id} />}
         </aside>
 
         <section className="workspace-main">
@@ -190,7 +200,7 @@ export default async function HustleDetailPage({ params }: PageProps) {
                     </div>
                   )}
 
-                  {isCandidate && (
+                  {isCandidate && hustle.status === "ACTIVE" && (
                     <LeadStatusForm currentComment={lead.candidateComment} currentStatus={lead.status} leadId={lead.id} />
                   )}
 
