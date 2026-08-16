@@ -4,7 +4,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Pooled connection used by the app. On a serverless host this must be the
+  // pooler endpoint, otherwise Postgres runs out of connections.
+  url       = env("DATABASE_URL")
+  // Unpooled connection used by migrations, which cannot run through a pooler.
+  // Locally both point at the same Docker Postgres.
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {

@@ -120,8 +120,6 @@ Known gaps:
 - Mentor profile editing does not exist. Mentors can view their profile but not change it.
 - Candidates cannot cancel a sent request, even though `MentorRequestStatus.CANCELLED` exists in the schema.
 - There is no automated test suite. Verification so far has been manual smoke testing.
-- ESLint is not configured. The `lint` script still calls `next lint`, which Next 16 removed.
-- The project uses `prisma db push` instead of real migrations.
 - The admin mentor list is capped at 50 rows with no pagination.
 - Rejecting a mentor deliberately leaves their existing Hustles running. There is no admin tool to pause or reassign those.
 
@@ -152,12 +150,18 @@ Useful commands:
 ```bash
 docker compose up -d   # start local PostgreSQL
 npm install
-npm run db:push        # sync the Prisma schema
+npm run db:deploy      # apply migrations
 npm run db:seed        # load development data
 npm run dev
+npm run lint
 npm run typecheck
 npm run build
 ```
+
+Schema changes go through migrations, not `db push`. Edit `prisma/schema.prisma`,
+then run `npm run db:migrate -- --name what_changed` to generate and apply a
+migration. `npm run db:status` shows whether the database matches the migration
+history, and `npm run db:reset` rebuilds it from scratch and re-seeds.
 
 Seed accounts all use the password `Switchkrr@123`. See `CHECKPOINT.txt` for the full list; the useful ones are `admin@switchkrr.test`, `nisha@switchkrr.test` (verified mentor with an active Hustle), `ishita@switchkrr.test` (mentor pending verification) and `riya@switchkrr.test` (candidate with leads and follow-ups).
 

@@ -12,7 +12,7 @@ Where we are right now
   - Signed HTTP-only session auth (jose + hashed session tokens)
 - Local PostgreSQL now runs via Docker (`docker compose up -d`).
   Docker Desktop is installed on this machine; the daemon must be running.
-- `npm run db:push` and `npm run db:seed` have been run successfully.
+- Prisma migrations are in place; `npm run db:deploy` and `npm run db:seed` work.
 - Typecheck and production build both pass.
 - App verified running at http://127.0.0.1:3001 with real data.
 
@@ -66,12 +66,6 @@ What is pending
 - Candidate cannot cancel a sent mentor request (MentorRequestStatus.CANCELLED
   exists in the schema but no API or UI uses it).
 - No automated test suite. Verification was done with manual smoke scripts.
-- ESLint is not configured. `npm run lint` calls `next lint`, which was removed
-  in Next 16, so the script fails. Needs an eslint.config.mjs.
-- Prisma warns that `package.json#prisma` is deprecated; migrate to prisma.config.ts
-  before Prisma 7.
-- Using `prisma db push` rather than real migrations. Move to `prisma migrate`
-  before any deployment with data worth keeping.
 - Pagination: the admin mentor list is capped at 50 rows with no paging.
 - Rejecting a mentor does not touch their existing Hustles by design. There is
   no admin control to pause or reassign those Hustles yet.
@@ -85,10 +79,9 @@ Decide which behaviour is correct, then make the code and KT agree.
 Next: Short Term
 ----------------
 1. Decide the post-approval mentor visibility rule above.
-2. Add eslint.config.mjs and fix the lint script.
-3. Add mentor profile editing.
-4. Add request cancellation for candidates.
-5. Switch from db:push to real Prisma migrations.
+2. Add mentor profile editing.
+3. Add request cancellation for candidates.
+4. Add an automated test suite.
 
 Next: Long Term
 ---------------
@@ -103,9 +96,13 @@ Local setup
 -----------
   docker compose up -d
   npm install
-  npm run db:push
+  npm run db:deploy
   npm run db:seed
   npm run dev
+
+Deployment note: `npm run build` deliberately does NOT run migrations, so a
+local build never needs a database. On the host, run `npm run db:deploy`
+before `npm run build`.
 
 Seed accounts (password for all: Switchkrr@123)
   admin@switchkrr.test    Admin

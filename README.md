@@ -52,22 +52,23 @@ Install dependencies:
 npm install
 ```
 
+Start PostgreSQL:
+
+```bash
+docker compose up -d
+```
+
 Create an environment file:
 
 ```bash
 copy .env.example .env
 ```
 
-Add a real PostgreSQL connection string to `.env`:
-
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
-```
-
-Push the Prisma schema:
+Apply migrations and load development data:
 
 ```bash
-npm run db:push
+npm run db:deploy
+npm run db:seed
 ```
 
 Start the development server:
@@ -82,16 +83,27 @@ Open:
 http://localhost:3000
 ```
 
+Seed accounts all use the password `Switchkrr@123`. Sign in as
+`admin@switchkrr.test`, `nisha@switchkrr.test` (mentor) or
+`riya@switchkrr.test` (candidate). See `CHECKPOINT.txt` for the full list.
+
 ## Useful Commands
 
 ```bash
 npm run dev
+npm run lint
 npm run typecheck
 npm run build
-npm run db:generate
-npm run db:push
+
+npm run db:migrate -- --name what_changed   # create and apply a migration
+npm run db:deploy                           # apply pending migrations
+npm run db:status                           # compare database to migrations
+npm run db:reset                            # rebuild and re-seed
 npm run db:studio
 ```
+
+Schema changes go through Prisma migrations. Do not use `prisma db push` — it
+bypasses migration history and causes drift.
 
 ## Important Project Files
 
