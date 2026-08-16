@@ -95,6 +95,31 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
+export async function DELETE(_request: Request, context: RouteContext) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return fail("Not authenticated.", 401);
+    if (user.role !== UserRole.CANDIDATE) return fail("Only candidates can cancel requests.", 403);
+
+    const { id } = await context.params;
+    const candidate = await prisma.candidateProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
+    if (!candidate) return fail("Candidate profile not found.", 404);
+
+    const request = await prisma.mentorRequest.findUnique({ where: { id }, select: { id: true, candidateId: true, status: true } });
+    if (!request) return fail("Mentor request not found.", 404);
+    if (request.candidateId !== candidate.id) return fail("You can only cancel your own requests.", 403);
+    if (request.status !== MentorRequestStatus.PENDING) return fail("Only pending requests can be cancelled.", 409);
+
+    const mentorRequest = await prisma.mentorRequest.update({
+      where: { id },
+      data: { status: MentorRequestStatus.CANCELLED },
+    });
+    return ok({ mentorRequest });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
+
 class DecisionError extends Error {
   constructor(
     message: string,
@@ -103,4 +128,3 @@ class DecisionError extends Error {
     super(message);
   }
 }
-

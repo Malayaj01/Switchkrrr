@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { DashboardShell, EmptyState, Panel } from "@/components/dashboard/dashboard-shell";
 import { CapacityBar } from "@/components/dashboard/dashboard-shell";
 import { RequestDecisionActions } from "@/components/mentor/request-decision-actions";
+import { CancelRequestButton } from "@/components/candidate/cancel-request-button";
 import { toCapacity } from "@/domain/dashboard";
 import { platformLimits } from "@/domain/limits";
 import { verificationLabel } from "@/domain/verification";
@@ -77,7 +78,10 @@ async function CandidateRequests({ userId }: { userId: string }) {
                   </p>
                   {request.candidateMessage && <p className="muted">You wrote: {request.candidateMessage}</p>}
                 </div>
-                <span className="request-status-chip pending">Pending</span>
+                <div className="panel-actions">
+                  <span className="request-status-chip pending">Pending</span>
+                  <CancelRequestButton requestId={request.id} />
+                </div>
               </div>
             ))}
           </div>
