@@ -10,9 +10,7 @@ import { formatDateTime, formatList, formatLongDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 
-type PageProps = {
-  searchParams: Promise<{ status?: string; q?: string }>;
-};
+type PageProps = { searchParams: Promise<{ status?: string; q?: string; page?: string }> };
 
 const filters = [
   { key: "PENDING", label: "Pending" },
@@ -34,6 +32,8 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const statusFilter = parseStatusFilter(params.status);
   const query = (params.q ?? "").trim();
+  const page = Math.max(1, Number(params.page) || 1);
+  const pageSize = 25;
 
   const searchFilter: Prisma.MentorProfileWhereInput = query
     ? {
@@ -48,7 +48,7 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
       }
     : {};
 
-  const [mentors, counts] = await Promise.all([
+  const [mentors, counts, total] = await Promise.all([
     prisma.mentorProfile.findMany({
       where: {
         ...searchFilter,
@@ -57,7 +57,7 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
       // Oldest first while reviewing the queue so nobody waits indefinitely;
       // newest decisions first when looking at already-reviewed mentors.
       orderBy: statusFilter === "PENDING" ? { createdAt: "asc" } : { updatedAt: "desc" },
-      take: 50,
+      skip: (page - 1) * pageSize, take: pageSize,
       include: {
         user: { select: { name: true, email: true, createdAt: true } },
         verifiedBy: { select: { name: true } },
@@ -65,6 +65,7 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
       },
     }),
     prisma.mentorProfile.groupBy({ by: ["verificationStatus"], _count: { verificationStatus: true } }),
+    prisma.mentorProfile.count({ where: { ...searchFilter, ...(statusFilter === "ALL" ? {} : { verificationStatus: statusFilter as VerificationStatus }) } }),
   ]);
 
   const countFor = (status: VerificationStatus) =>
@@ -75,7 +76,7 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
     const search = new URLSearchParams();
     search.set("status", key);
     if (query) search.set("q", query);
-    return `/dashboard/admin/mentors?${search.toString()}` as Route;
+    search.set("page", "1"); return `/dashboard/admin/mentors?${search.toString()}` as Route;
   }
 
   return (
@@ -200,6 +201,7 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
           </EmptyState>
         </Panel>
       )}
+      {total > pageSize && <div className="panel-actions"><Link className="button secondary" href={`/dashboard/admin/mentors?status=${statusFilter}&q=${encodeURIComponent(query)}&page=${Math.max(1, page - 1)}` as Route}>Previous</Link><span className="muted">Page {page} of {Math.ceil(total / pageSize)}</span><Link className="button secondary" href={`/dashboard/admin/mentors?status=${statusFilter}&q=${encodeURIComponent(query)}&page=${Math.min(Math.ceil(total / pageSize), page + 1)}` as Route}>Next</Link></div>}
     </DashboardShell>
   );
 }
