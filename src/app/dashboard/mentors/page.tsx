@@ -1,9 +1,12 @@
 import { UserRole } from "@prisma/client";
-import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { MentorPreviewCard, type MentorPreview } from "@/components/mentor/mentor-preview-card";
+import { DashboardShell, EmptyState, Panel } from "@/components/dashboard/dashboard-shell";
+import { MentorPreviewCard } from "@/components/mentor/mentor-preview-card";
+import { platformLimits } from "@/domain/limits";
 import { rankMentorsForCandidate } from "@/domain/matching";
+import { toMentorPreview, type MentorPreview } from "@/domain/mentor-preview";
+import { requestableVerificationStatuses } from "@/domain/verification";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 
@@ -21,86 +24,77 @@ export default async function RecommendedMentorsPage() {
           status: true,
         },
       },
+      hustles: {
+        where: { status: "ACTIVE" },
+        select: { id: true },
+      },
     },
   });
 
   const mentors = await prisma.mentorProfile.findMany({
-    where: { userId: { not: user.id } },
+    where: {
+      userId: { not: user.id },
+      // Rejected mentors never appear in candidate-facing discovery.
+      verificationStatus: { in: requestableVerificationStatuses },
+    },
   });
 
   const requestByMentorId = new Map(candidate.mentorRequests.map((request) => [request.mentorId, request.status]));
-  const previews: MentorPreview[] = rankMentorsForCandidate(candidate, mentors).map(({ mentor, score, reasons }) => ({
-    id: mentor.id,
-    domain: mentor.domain,
-    designation: anonymizeDesignation(mentor.designation),
-    experienceRange: toExperienceRange(mentor.yearsExperience),
-    companySignal: mentor.helpCompanies.slice(0, 3),
-    currentCompanyType: toCompanyType(mentor.currentCompany),
-    verificationStatus: mentor.verificationStatus,
-    score,
-    reasons,
-    requestStatus: requestByMentorId.get(mentor.id) ?? null,
-  }));
+  const previews: MentorPreview[] = rankMentorsForCandidate(candidate, mentors).map((match) =>
+    toMentorPreview(match, requestByMentorId.get(match.mentor.id) ?? null),
+  );
+
+  const isProfileComplete = Boolean(candidate.profileCompletedAt);
+  const atHustleLimit = candidate.hustles.length >= platformLimits.maxActiveHustlesPerCandidate;
+  const canRequest = isProfileComplete && !atHustleLimit;
 
   return (
-    <main className="shell">
-      <header className="dashboard-header">
-        <div>
-          <p className="eyebrow">Mentor matching</p>
-          <h1>Recommended mentors</h1>
+    <DashboardShell
+      eyebrow="Mentor matching"
+      role={UserRole.CANDIDATE}
+      title="Recommended mentors"
+      subtitle="These previews hide private mentor details until your request is approved."
+    >
+      {!isProfileComplete && (
+        <Panel eyebrow="Blocked" title="Complete your profile first">
           <p className="muted">
-            These previews hide private mentor details until your request is approved.
+            Mentor requests unlock once your candidate profile has the details matching depends on.
           </p>
-        </div>
-        <Link className="button secondary" href="/dashboard">
-          <ArrowLeft size={17} />
-          Dashboard
-        </Link>
-      </header>
+          <div className="panel-actions">
+            <Link className="button" href="/dashboard/profile">
+              Complete profile
+            </Link>
+          </div>
+        </Panel>
+      )}
 
-      {!candidate.profileCompletedAt && (
-        <section className="dashboard-panel card">
-          <h2>Complete profile first</h2>
-          <p className="muted">Mentor requests are enabled after your candidate profile has the required matching details.</p>
-          <Link className="button" href="/dashboard/profile">
-            Complete profile
-          </Link>
-        </section>
+      {isProfileComplete && atHustleLimit && (
+        <Panel eyebrow="At capacity" title="You have reached the active Hustle limit">
+          <p className="muted">
+            You can run {platformLimits.maxActiveHustlesPerCandidate} Hustles at a time. Complete one before
+            requesting another mentor.
+          </p>
+          <div className="panel-actions">
+            <Link className="button secondary" href="/dashboard/hustles">
+              Open Hustles
+            </Link>
+          </div>
+        </Panel>
       )}
 
       <section className="mentor-preview-grid">
         {previews.length > 0 ? (
           previews.map((mentor) => (
-            <MentorPreviewCard key={mentor.id} canRequest={Boolean(candidate.profileCompletedAt)} mentor={mentor} />
+            <MentorPreviewCard canRequest={canRequest} key={mentor.id} mentor={mentor} />
           ))
         ) : (
-          <article className="dashboard-panel card">
-            <h2>No mentors yet</h2>
-            <p className="muted">Add mentor seed data or onboard mentors to see recommendations here.</p>
-          </article>
+          <Panel eyebrow="Matching" title="No mentors available yet">
+            <EmptyState>
+              No verified or pending mentors match your profile right now. Check back once more mentors join.
+            </EmptyState>
+          </Panel>
         )}
       </section>
-    </main>
+    </DashboardShell>
   );
-}
-
-function anonymizeDesignation(designation: string) {
-  if (/manager|lead|head/i.test(designation)) return "Leadership mentor";
-  if (/product/i.test(designation)) return "Product mentor";
-  if (/engineer|developer|architect/i.test(designation)) return "Engineering mentor";
-  return "Career mentor";
-}
-
-function toExperienceRange(years: number) {
-  if (years >= 10) return "10+ years";
-  if (years >= 7) return "7-9 years";
-  if (years >= 4) return "4-6 years";
-  return "0-3 years";
-}
-
-function toCompanyType(company: string) {
-  if (/google|microsoft|amazon|meta|apple/i.test(company)) return "Big Tech";
-  if (/razorpay|phonepe|paytm|stripe/i.test(company)) return "Fintech";
-  if (/swiggy|zomato|zepto|meesho/i.test(company)) return "Consumer internet";
-  return "Growth company";
 }

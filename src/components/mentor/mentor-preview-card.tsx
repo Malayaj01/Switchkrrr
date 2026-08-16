@@ -4,18 +4,9 @@ import { CheckCircle2, Clock3, Send, ShieldCheck, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export type MentorPreview = {
-  id: string;
-  domain: string;
-  designation: string;
-  experienceRange: string;
-  companySignal: string[];
-  currentCompanyType: string;
-  verificationStatus: string;
-  score: number;
-  reasons: string[];
-  requestStatus: string | null;
-};
+import type { MentorPreview } from "@/domain/mentor-preview";
+
+export type { MentorPreview };
 
 type MentorPreviewCardProps = {
   canRequest: boolean;
@@ -67,12 +58,10 @@ export function MentorPreviewCard({ canRequest, mentor }: MentorPreviewCardProps
       </div>
 
       <div className="match-signals">
-        {mentor.verificationStatus === "VERIFIED" && (
-          <span>
-            <ShieldCheck size={14} />
-            Verified
-          </span>
-        )}
+        <span className={mentor.verificationStatus === "VERIFIED" ? "signal-verified" : "signal-pending"}>
+          <ShieldCheck size={14} />
+          {mentor.verificationStatus === "VERIFIED" ? "Verified" : "Not yet verified"}
+        </span>
         {mentor.companySignal.map((company) => (
           <span key={company}>{company}</span>
         ))}
@@ -95,7 +84,7 @@ export function MentorPreviewCard({ canRequest, mentor }: MentorPreviewCardProps
           Request {mentor.requestStatus!.toLowerCase()}
         </span>
       ) : !canRequest ? (
-        <span className="request-status-chip">Complete profile to request</span>
+        <span className="request-status-chip">Requests unavailable right now</span>
       ) : (
         <div className="request-box">
           <textarea

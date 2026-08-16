@@ -1,10 +1,19 @@
-import { LeadStatus, UserRole } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 import { ArrowLeft, CalendarDays, ExternalLink, Mail, MapPin } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { LeadCreateForm } from "@/components/hustle/lead-create-form";
 import { LeadStatusForm } from "@/components/hustle/lead-status-form";
+import { summarizeLeads } from "@/domain/dashboard";
+import {
+  describeFollowUp,
+  formatDateTime,
+  formatEnumLabel,
+  formatLongDate,
+  leadStatusClassName,
+} from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 
@@ -50,24 +59,28 @@ export default async function HustleDetailPage({ params }: PageProps) {
 
   const isMentor = user.role === UserRole.MENTOR && hustle.mentor.userId === user.id;
   const isCandidate = user.role === UserRole.CANDIDATE && hustle.candidate.userId === user.id;
-  if (!isMentor && !isCandidate && user.role !== UserRole.ADMIN) redirect("/dashboard");
+  const isAdmin = user.role === UserRole.ADMIN;
+  if (!isMentor && !isCandidate && !isAdmin) redirect("/dashboard");
+
+  const now = new Date();
+  const leadSummary = summarizeLeads(hustle.leads);
+  // Admins can audit a workspace, but the candidate's anonymity rule still
+  // applies to the candidate's own view of the mentor.
+  const heading = isCandidate ? `${hustle.mentor.domain} mentor` : hustle.candidate.user.name;
 
   return (
-    <main className="shell">
-      <header className="dashboard-header">
-        <div>
-          <p className="eyebrow">Hustle workspace</p>
-          <h1>{isMentor ? hustle.candidate.user.name : `${hustle.mentor.domain} mentor`}</h1>
-          <p className="muted">
-            {hustle.candidate.goalRole} - {hustle.status.toLowerCase()} since {formatDate(hustle.createdAt)}
-          </p>
-        </div>
+    <DashboardShell
+      eyebrow="Hustle workspace"
+      role={user.role}
+      title={heading}
+      subtitle={`${hustle.candidate.goalRole} - ${formatEnumLabel(hustle.status)} since ${formatLongDate(hustle.createdAt)}`}
+      action={
         <Link className="button secondary" href={hustlesRoute}>
           <ArrowLeft size={17} />
           Hustles
         </Link>
-      </header>
-
+      }
+    >
       <section className="workspace-layout">
         <aside className="workspace-sidebar">
           <section className="dashboard-panel card">
@@ -84,7 +97,7 @@ export default async function HustleDetailPage({ params }: PageProps) {
 
           <section className="dashboard-panel card">
             <h2>Mentor</h2>
-            <p className="muted">{isMentor ? hustle.mentor.user.name : `${hustle.mentor.domain} mentor`}</p>
+            <p className="muted">{isCandidate ? `${hustle.mentor.domain} mentor` : hustle.mentor.user.name}</p>
             <p>{hustle.mentor.designation}</p>
             <p>{hustle.mentor.yearsExperience}+ years experience</p>
             <div className="match-signals">
@@ -101,9 +114,13 @@ export default async function HustleDetailPage({ params }: PageProps) {
           <div className="panel-head">
             <div>
               <p className="eyebrow">Lead board</p>
-              <h2>{hustle.leads.length} leads</h2>
+              <h2>{leadSummary.total} leads</h2>
+              <p className="muted">
+                {leadSummary.open} open - {leadSummary.inProcess} in process - {leadSummary.offers} offers -{" "}
+                {leadSummary.rejected} rejected
+              </p>
             </div>
-            <span className="success-chip">{hustle.status}</span>
+            <span className="success-chip">{formatEnumLabel(hustle.status)}</span>
           </div>
 
           {hustle.leads.length > 0 ? (
@@ -118,7 +135,9 @@ export default async function HustleDetailPage({ params }: PageProps) {
                         {lead.domain ? ` - ${lead.domain}` : ""}
                       </p>
                     </div>
-                    <span className={`status-chip ${statusClassName(lead.status)}`}>{formatEnum(lead.status)}</span>
+                    <span className={`status-chip ${leadStatusClassName(lead.status)}`}>
+                      {formatEnumLabel(lead.status)}
+                    </span>
                   </div>
 
                   <div className="lead-meta-row">
@@ -131,7 +150,7 @@ export default async function HustleDetailPage({ params }: PageProps) {
                     {lead.followUpDate && (
                       <span>
                         <CalendarDays size={15} />
-                        Follow up {formatDate(lead.followUpDate)}
+                        Follow up {formatLongDate(lead.followUpDate)} - {describeFollowUp(lead.followUpDate, now)}
                       </span>
                     )}
                     {lead.contactEmail && (
@@ -182,7 +201,7 @@ export default async function HustleDetailPage({ params }: PageProps) {
                         <div className="timeline-item" key={update.id}>
                           <div />
                           <p>
-                            <strong>{formatEnum(update.newStatus)}</strong>
+                            <strong>{formatEnumLabel(update.newStatus)}</strong>
                             <span className="muted">
                               {update.user.name} - {formatDateTime(update.createdAt)}
                             </span>
@@ -207,33 +226,6 @@ export default async function HustleDetailPage({ params }: PageProps) {
           )}
         </section>
       </section>
-    </main>
+    </DashboardShell>
   );
-}
-
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en", { day: "2-digit", month: "short", year: "numeric" }).format(date);
-}
-
-function formatDateTime(date: Date) {
-  return new Intl.DateTimeFormat("en", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-  }).format(date);
-}
-
-function formatEnum(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part[0].toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function statusClassName(status: LeadStatus) {
-  if (status === LeadStatus.INTERVIEW || status === LeadStatus.CALLBACK || status === LeadStatus.OFFER) return "interview";
-  if (status === LeadStatus.APPLIED) return "applied";
-  return "todo";
 }

@@ -3,6 +3,7 @@ import { fail, handleRouteError, ok } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 import { platformLimits } from "@/domain/limits";
+import { isMentorRequestable } from "@/domain/verification";
 import { mentorRequestSchema } from "@/validation/mentor-request";
 
 export async function POST(request: Request) {
@@ -19,6 +20,10 @@ export async function POST(request: Request) {
           where: { status: "PENDING" },
           select: { id: true },
         },
+        hustles: {
+          where: { status: "ACTIVE" },
+          select: { id: true },
+        },
       },
     });
 
@@ -27,12 +32,18 @@ export async function POST(request: Request) {
     if (candidate.mentorRequests.length >= platformLimits.maxPendingMentorRequestsPerCandidate) {
       return fail("You have reached the pending mentor request limit.", 400);
     }
+    if (candidate.hustles.length >= platformLimits.maxActiveHustlesPerCandidate) {
+      return fail("You have reached the active Hustle limit. Complete one before requesting another mentor.", 400);
+    }
 
     const mentor = await prisma.mentorProfile.findUnique({
       where: { id: payload.mentorId },
-      select: { id: true },
+      select: { id: true, verificationStatus: true },
     });
     if (!mentor) return fail("Mentor not found.", 404);
+    if (!isMentorRequestable(mentor.verificationStatus)) {
+      return fail("This mentor is not accepting requests.", 403);
+    }
 
     const mentorRequest = await prisma.mentorRequest.create({
       data: {

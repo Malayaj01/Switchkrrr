@@ -1,7 +1,15 @@
-import { PrismaClient, UserRole } from "@prisma/client";
+import { LeadStatus, PrismaClient, UserRole, VerificationStatus } from "@prisma/client";
 import { hashPassword } from "../src/lib/security/password";
 
 const prisma = new PrismaClient();
+
+/** Dates relative to the seed run, so follow-up buckets always have something in them. */
+function daysFromNow(days: number) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return date;
+}
 
 async function main() {
   const passwordHash = await hashPassword("Switchkrr@123");
@@ -56,6 +64,36 @@ async function main() {
       helpCompanies: ["Swiggy", "Zomato", "Meesho", "Zepto"],
       mentorCode: "SWK-SEED-03",
       bio: "Supports candidates targeting fast-growth consumer internet teams.",
+      passwordHash,
+    }),
+    // Sits in the admin verification queue so the flow can be exercised.
+    createMentor({
+      name: "Ishita Nair",
+      username: "ishita_mentor",
+      email: "ishita@switchkrr.test",
+      currentCompany: "Freshworks",
+      designation: "Product Design Lead",
+      yearsExperience: 6,
+      domain: "SaaS",
+      helpCompanies: ["Freshworks", "Zoho", "Atlassian"],
+      mentorCode: "SWK-SEED-04",
+      bio: "Design and product mentor for candidates moving into SaaS product teams.",
+      verificationStatus: VerificationStatus.PENDING,
+      passwordHash,
+    }),
+    // Rejected: must never appear in candidate recommendations.
+    createMentor({
+      name: "Rohan Verma",
+      username: "rohan_mentor",
+      email: "rohan@switchkrr.test",
+      currentCompany: "Unverified Consulting",
+      designation: "Career Coach",
+      yearsExperience: 3,
+      domain: "Fintech",
+      helpCompanies: ["Paytm"],
+      mentorCode: "SWK-SEED-05",
+      bio: "Profile could not be verified.",
+      verificationStatus: VerificationStatus.REJECTED,
       passwordHash,
     }),
   ]);
@@ -162,6 +200,7 @@ async function main() {
       jobLink: "https://careers.google.com/",
       priority: "HIGH",
       status: "APPLIED",
+      followUpDate: daysFromNow(-3),
       mentorComment: "Prepare two frontend system design examples before referral.",
     },
   });
@@ -178,6 +217,156 @@ async function main() {
       note: "Applied after updating resume and portfolio links.",
     },
   });
+
+  // Spread of statuses and follow-up dates so every dashboard panel has data:
+  // one overdue, one due today, one upcoming, plus a terminal offer.
+  const extraLeads = [
+    {
+      id: "seed-lead-atlassian-frontend",
+      company: "Atlassian",
+      role: "Senior Frontend Engineer",
+      status: LeadStatus.INTERVIEW,
+      followUpDate: daysFromNow(0),
+      mentorComment: "Round 2 is a live coding round. Practise React state edge cases.",
+    },
+    {
+      id: "seed-lead-freshworks-product",
+      company: "Freshworks",
+      role: "Product Engineer 2",
+      status: LeadStatus.TO_APPLY,
+      followUpDate: daysFromNow(4),
+      mentorComment: "Apply through the referral link before Friday.",
+    },
+    {
+      id: "seed-lead-microsoft-swe",
+      company: "Microsoft",
+      role: "Software Engineer 2",
+      status: LeadStatus.CALLBACK,
+      followUpDate: daysFromNow(9),
+      mentorComment: "Recruiter will share the loop schedule.",
+    },
+    {
+      id: "seed-lead-zoho-frontend",
+      company: "Zoho",
+      role: "UI Engineer",
+      status: LeadStatus.REJECTED,
+      followUpDate: null,
+      mentorComment: "Rejected at screening. Not a blocker, keep moving.",
+    },
+  ];
+
+  for (const item of extraLeads) {
+    await prisma.lead.upsert({
+      where: { id: item.id },
+      update: {},
+      create: {
+        id: item.id,
+        hustleId: hustle.id,
+        createdById: mentors[1].id,
+        company: item.company,
+        role: item.role,
+        domain: "SaaS",
+        location: "Bengaluru",
+        priority: "MEDIUM",
+        status: item.status,
+        followUpDate: item.followUpDate,
+        mentorComment: item.mentorComment,
+      },
+    });
+  }
+
+  await prisma.progressUpdate.upsert({
+    where: { id: "seed-progress-atlassian-interview" },
+    update: {},
+    create: {
+      id: "seed-progress-atlassian-interview",
+      leadId: "seed-lead-atlassian-frontend",
+      userId: candidates[0].id,
+      oldStatus: LeadStatus.APPLIED,
+      newStatus: LeadStatus.INTERVIEW,
+      note: "Cleared the screening round.",
+    },
+  });
+
+  // A second Hustle so the mentor and admin dashboards show more than one row.
+  const secondRequest = await prisma.mentorRequest.upsert({
+    where: {
+      candidateId_mentorId: {
+        candidateId: candidates[1].candidateProfile!.id,
+        mentorId: mentors[2].mentorProfile!.id,
+      },
+    },
+    update: {},
+    create: {
+      candidateId: candidates[1].candidateProfile!.id,
+      mentorId: mentors[2].mentorProfile!.id,
+      candidateMessage: "Looking to move into a consumer internet backend team.",
+      status: "APPROVED",
+    },
+  });
+
+  const secondHustle = await prisma.hustle.upsert({
+    where: {
+      candidateId_mentorId: {
+        candidateId: candidates[1].candidateProfile!.id,
+        mentorId: mentors[2].mentorProfile!.id,
+      },
+    },
+    update: {},
+    create: {
+      candidateId: candidates[1].candidateProfile!.id,
+      mentorId: mentors[2].mentorProfile!.id,
+      mentorRequestId: secondRequest.id,
+    },
+  });
+
+  await prisma.lead.upsert({
+    where: { id: "seed-lead-swiggy-backend" },
+    update: {},
+    create: {
+      id: "seed-lead-swiggy-backend",
+      hustleId: secondHustle.id,
+      createdById: mentors[2].id,
+      company: "Swiggy",
+      role: "Backend Engineer 2",
+      domain: "Consumer apps",
+      location: "Bengaluru",
+      priority: "HIGH",
+      status: LeadStatus.OFFER,
+      mentorComment: "Offer received. Negotiate the joining bonus.",
+    },
+  });
+
+  await prisma.lead.upsert({
+    where: { id: "seed-lead-zepto-backend" },
+    update: {},
+    create: {
+      id: "seed-lead-zepto-backend",
+      hustleId: secondHustle.id,
+      createdById: mentors[2].id,
+      company: "Zepto",
+      role: "SDE 2",
+      domain: "Consumer apps",
+      location: "Bengaluru",
+      priority: "MEDIUM",
+      status: LeadStatus.TO_APPLY,
+      followUpDate: daysFromNow(-1),
+      mentorComment: "Apply today, the posting closes this week.",
+    },
+  });
+
+  await prisma.progressUpdate.upsert({
+    where: { id: "seed-progress-swiggy-offer" },
+    update: {},
+    create: {
+      id: "seed-progress-swiggy-offer",
+      leadId: "seed-lead-swiggy-backend",
+      userId: candidates[1].id,
+      oldStatus: LeadStatus.INTERVIEW,
+      newStatus: LeadStatus.OFFER,
+      note: "Offer letter received.",
+    },
+  });
 }
 
 async function createMentor(input: {
@@ -191,8 +380,11 @@ async function createMentor(input: {
   helpCompanies: string[];
   mentorCode: string;
   bio: string;
+  verificationStatus?: VerificationStatus;
   passwordHash: string;
 }) {
+  const verificationStatus = input.verificationStatus ?? VerificationStatus.VERIFIED;
+
   return prisma.user.upsert({
     where: { email: input.email },
     update: {},
@@ -211,7 +403,8 @@ async function createMentor(input: {
           helpCompanies: input.helpCompanies,
           mentorCode: input.mentorCode,
           bio: input.bio,
-          verificationStatus: "VERIFIED",
+          verificationStatus,
+          verifiedAt: verificationStatus === VerificationStatus.PENDING ? null : new Date(),
         },
       },
     },
