@@ -1,125 +1,119 @@
 Switchkrr Checkpoint
 ====================
+Last updated: 2026-08-16
 
 Where we are right now
 ----------------------
 - Product direction is finalized: Switchkrr is a mentor-led job switching platform.
-- Tech stack approved and rebuilt from scratch:
-  - Next.js
+- Stack in place and working:
+  - Next.js 16 (App Router, Turbopack, typedRoutes)
   - TypeScript
-  - Prisma
-  - PostgreSQL
-  - Signed HTTP-only session auth
-- Old Vite/Node prototype was removed.
-- New clean codebase is in place.
-- Prisma schema exists for:
-  - users
-  - mentor profiles
-  - candidate profiles
-  - mentor requests
-  - hustles
-  - leads
-  - progress updates
-  - sessions
-- Signup/login backend foundation exists.
-- Candidate and mentor signup forms exist.
-- Basic role-aware dashboard shell exists.
-- Landing page has been redesigned with:
-  - Switchkrr logo on top-left
-  - content sections
-  - full-page animated waves
-  - final Hinglish line: "Chal aaja, switch krte hai"
-- Typecheck and production build are passing.
-- App is currently previewable at:
-  http://127.0.0.1:3001
+  - Prisma 6 + PostgreSQL
+  - Signed HTTP-only session auth (jose + hashed session tokens)
+- Local PostgreSQL now runs via Docker (`docker compose up -d`).
+  Docker Desktop is installed on this machine; the daemon must be running.
+- `npm run db:push` and `npm run db:seed` have been run successfully.
+- Typecheck and production build both pass.
+- App verified running at http://127.0.0.1:3001 with real data.
 
-What we were doing
-------------------
-- We were improving the home/landing page design.
-- We added more content:
-  - About us
-  - Why this
-  - How we help
-  - The concept
-- We discussed adding scroll-reveal animation:
-  - waves unfolding as user scrolls
-  - landing sections animating into view
-- We also clarified an important product rule:
-  - candidate should not see full mentor name/details before approval
-  - candidate should only see anonymized mentor preview before request approval
+What is built and verified
+--------------------------
+Auth
+- Signup (candidate + mentor), login, logout, current-user API.
+- Role-aware routing and redirects on every dashboard page.
+
+Candidate
+- Profile completion form and API.
+- Mentor discovery with anonymised previews (no name/company/LinkedIn exposed).
+- Mentor request creation, with limits enforced:
+  max 10 pending requests and max 5 active Hustles per candidate.
+- Requests page showing pending and decided requests.
+- Candidate dashboard: active Hustle summary, latest leads, upcoming
+  follow-ups (overdue / due today / upcoming), request statuses, next action,
+  and profile completeness.
+
+Mentor
+- Request review queue with approve/decline; approval auto-creates a Hustle.
+- Capacity enforced at 10 active candidates, and approvals are blocked at the cap.
+- Mentor dashboard: pending requests, active Hustles, candidate progress table,
+  lead counts, follow-ups due, capacity bar, next action, recent lead movement.
+- Read-only mentor profile page showing verification status and admin notes.
+
+Admin
+- Admin dashboard: total users, candidates, mentors, pending verifications,
+  active Hustles, total leads, leads-by-status breakdown, and a merged
+  recent-activity feed (signups + requests + progress updates).
+- Mentor verification page at /dashboard/admin/mentors with status filters
+  (Pending / Verified / Rejected / All) and search across name, email,
+  company, domain and mentor code.
+- Approve / reject / reset-to-pending, with an optional note.
+- Verification is enforced, not cosmetic: REJECTED mentors are hidden from
+  candidate recommendations and cannot receive new requests.
+- Audit trail stored on MentorProfile: verifiedAt, verifiedById, verificationNote.
+
+Hustle workspace
+- Lead board with priority ordering, lead creation (mentor), status updates
+  (candidate), comments, follow-up dates and full progress history.
+
+Navigation
+- Shared DashboardNav with active-route highlighting, role-filtered items:
+  Dashboard, Profile, Find mentors, Requests, Hustles, Admin.
+- Shared DashboardShell/MetricGrid/Panel components used by every page.
 
 What is pending
 ---------------
-- Real PostgreSQL connection is not set yet.
-- Docker is not installed on this machine, so local Postgres could not be started.
-- Signup/login need a real DATABASE_URL to persist users.
-- Core product workflows are not implemented yet:
-  - candidate profile completion
-  - mentor matching
-  - mentor request approval/decline
-  - automatic Hustle creation
-  - Hustle workspace
-  - lead posting and tracking
-  - admin dashboard
+- Mentor profile editing (mentors can view but not edit their profile).
+- Candidate cannot cancel a sent mentor request (MentorRequestStatus.CANCELLED
+  exists in the schema but no API or UI uses it).
+- No automated test suite. Verification was done with manual smoke scripts.
+- ESLint is not configured. `npm run lint` calls `next lint`, which was removed
+  in Next 16, so the script fails. Needs an eslint.config.mjs.
+- Prisma warns that `package.json#prisma` is deprecated; migrate to prisma.config.ts
+  before Prisma 7.
+- Using `prisma db push` rather than real migrations. Move to `prisma migrate`
+  before any deployment with data worth keeping.
+- Pagination: the admin mentor list is capped at 50 rows with no paging.
+- Rejecting a mentor does not touch their existing Hustles by design. There is
+  no admin control to pause or reassign those Hustles yet.
+
+Open product question
+---------------------
+KT.md says full mentor details may be revealed to the candidate after approval.
+The code still anonymises the mentor inside the Hustle workspace for candidates.
+Decide which behaviour is correct, then make the code and KT agree.
 
 Next: Short Term
 ----------------
-1. Connect real PostgreSQL using Supabase or Neon.
-2. Run Prisma db push/migration.
-3. Build candidate profile completion:
-   - resume text/upload placeholder
-   - skills
-   - target companies
-   - preferred domains
-   - location preference
-   - salary range
-   - job type preference
-4. Build mentor matching with private mentor previews.
-5. Build mentor request flow:
-   - candidate sends request
-   - mentor sees pending requests
-   - mentor approves/declines
-6. On approval, auto-create Hustle.
-7. Add scroll reveal animation on landing page:
-   - waves draw/unfold while scrolling
-   - sections fade/slide into view
+1. Decide the post-approval mentor visibility rule above.
+2. Add eslint.config.mjs and fix the lint script.
+3. Add mentor profile editing.
+4. Add request cancellation for candidates.
+5. Switch from db:push to real Prisma migrations.
 
 Next: Long Term
 ---------------
-1. Build full Hustle workspace:
-   - mentor posts jobs/leads
-   - mentor adds contacts/emails
-   - mentor adds comments
-   - candidate updates statuses
-   - progress history is tracked
-2. Build mentor dashboard:
-   - pending requests
-   - active Hustles
-   - candidate progress
-   - max 10 active candidates
-3. Build candidate dashboard:
-   - profile status
-   - recommended mentors
-   - pending requests
-   - active Hustles
-   - max 5 active Hustles
-4. Build super admin dashboard:
-   - total users
-   - total mentors
-   - total candidates
-   - total Hustles
-   - total leads
-   - jobs by domain/company
-   - mentor verification queue
-5. Add mentor verification later.
-6. Add LLM resume analysis later.
-7. Add email notifications later.
-8. Add file storage for resumes later.
-9. Deploy publicly using:
-   - Vercel or Render for app
-   - Supabase or Neon for PostgreSQL
-10. Add revenue features later:
-   - candidate premium
-   - paid mentor sessions
-   - AI resume/job match add-ons
-   - company hiring plans
+1. Email notifications on request decisions and verification outcomes.
+2. File storage for resumes.
+3. LLM resume analysis and job matching.
+4. Deploy: Vercel or Render for the app, Supabase or Neon for PostgreSQL.
+5. Revenue features: candidate premium, paid mentor sessions, AI add-ons,
+   company hiring plans.
+
+Local setup
+-----------
+  docker compose up -d
+  npm install
+  npm run db:push
+  npm run db:seed
+  npm run dev
+
+Seed accounts (password for all: Switchkrr@123)
+  admin@switchkrr.test    Admin
+  nisha@switchkrr.test    Mentor, verified, has an active Hustle
+  kabir@switchkrr.test    Mentor, verified, has an active Hustle
+  aarav@switchkrr.test    Mentor, verified, has a pending request
+  ishita@switchkrr.test   Mentor, PENDING verification
+  rohan@switchkrr.test    Mentor, REJECTED (hidden from candidates)
+  riya@switchkrr.test     Candidate with an active Hustle and leads
+  dev@switchkrr.test      Candidate with an active Hustle and an offer
+  maya@switchkrr.test     Candidate with a pending request

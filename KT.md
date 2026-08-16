@@ -54,91 +54,86 @@ The main workflow is:
 
 ## 3. What Is Done Yet
 
-The project has already been rebuilt as a clean Next.js application using TypeScript, Prisma, and PostgreSQL.
+The whole core loop now works end to end against a real PostgreSQL database: a candidate signs up, completes a profile, browses anonymised mentor previews, sends a request, a mentor approves it, a Hustle opens, the mentor posts leads, and the candidate moves those leads through statuses while both dashboards track progress. An admin can see platform-wide numbers and verify mentors.
 
-The old Vite/Node prototype was removed. The current codebase is the main direction going forward.
+Foundation:
 
-Completed foundation:
+- Next.js 16 App Router with TypeScript, Turbopack and `typedRoutes`.
+- Prisma 6 with PostgreSQL, run locally through Docker (`docker compose up -d`).
+- Password hashing plus signed HTTP-only session cookies backed by hashed session rows.
+- Landing page with animated waves and scroll-reveal sections.
+- Typecheck and production build pass; the app has been smoke-tested with seed data.
 
-- Next.js app structure is in place.
-- TypeScript is configured.
-- Prisma is installed and configured.
-- PostgreSQL is selected as the database.
-- Prisma schema exists for users, mentor profiles, candidate profiles, mentor requests, Hustles, leads, progress updates, and sessions.
-- Signup API exists.
-- Login API exists.
-- Logout API exists.
-- Current user API exists.
-- Password hashing is implemented.
-- Signed HTTP-only session cookie foundation is implemented.
-- Candidate and mentor signup forms exist.
-- Basic role-aware dashboard shell exists.
-- Landing page has been redesigned for Switchkrr.
-- Landing page includes animated waves and multiple content sections.
-- Scroll reveal component exists for landing sections.
-- Project build and typecheck were passing at the previous checkpoint.
+Candidate features:
+
+- Profile completion form and API.
+- Mentor discovery with anonymised previews.
+- Mentor requests, with limits enforced server-side (10 pending requests, 5 active Hustles).
+- Requests page listing pending and decided requests.
+- Dashboard: active Hustle summary, latest leads, upcoming follow-ups, request statuses and a computed next action.
+
+Mentor features:
+
+- Request review queue, approve or decline, approval auto-creates a Hustle.
+- Capacity of 10 active candidates enforced in the API and surfaced in the UI.
+- Dashboard: pending requests, active Hustles, candidate progress table, lead counts, follow-ups due, capacity bar, next action, recent lead movement.
+- Read-only mentor profile page showing verification status and any admin note.
+
+Admin features:
+
+- Dashboard: total users, candidates, mentors, pending verifications, active Hustles, total leads, leads-by-status breakdown, merged recent-activity feed.
+- Mentor verification page with status filters and search.
+- Approve, reject or reset a mentor to pending, with an optional note.
+- Verification is enforced: rejected mentors disappear from candidate recommendations and cannot receive new requests.
+- Every decision records `verifiedAt`, `verifiedById` and `verificationNote`.
+
+Hustle workspace:
+
+- Lead board ordered by priority, mentor lead creation, candidate status updates, comments, follow-up dates and full progress history.
 
 Current important files:
 
 - `src/app/page.tsx` - landing page.
-- `src/app/signup/page.tsx` - signup page.
-- `src/app/login/page.tsx` - login page.
-- `src/app/dashboard/page.tsx` - basic dashboard shell.
-- `src/app/api/auth/signup/route.ts` - signup API.
-- `src/app/api/auth/login/route.ts` - login API.
-- `src/app/api/auth/logout/route.ts` - logout API.
-- `src/app/api/me/route.ts` - current user API.
-- `src/components/auth/signup-form.tsx` - signup form.
-- `src/components/auth/login-form.tsx` - login form.
-- `src/components/landing/animated-waves.tsx` - landing animation.
-- `src/components/landing/reveal-section.tsx` - scroll reveal component.
+- `src/app/dashboard/page.tsx` - role router that picks the right dashboard.
+- `src/components/dashboard/candidate-dashboard.tsx` - candidate dashboard.
+- `src/components/dashboard/mentor-dashboard.tsx` - mentor dashboard.
+- `src/components/dashboard/admin-dashboard.tsx` - admin dashboard.
+- `src/components/dashboard/dashboard-shell.tsx` - shared shell, metric grid, panels, capacity bar.
+- `src/components/dashboard/dashboard-nav.tsx` - role-filtered nav with active highlighting.
+- `src/app/dashboard/admin/mentors/page.tsx` - mentor verification queue.
+- `src/app/api/admin/mentors/[id]/verification/route.ts` - verification API.
+- `src/domain/dashboard.ts` - lead summaries, follow-up buckets, capacity, next actions.
+- `src/domain/verification.ts` - the verification product rule in one place.
+- `src/domain/mentor-preview.ts` - the anonymised shape a candidate may see.
+- `src/domain/matching.ts` - mentor scoring.
 - `src/domain/limits.ts` - product limits.
-- `src/domain/matching.ts` - matching-related domain logic.
+- `src/lib/format.ts` - shared date, enum and status formatting.
 - `prisma/schema.prisma` - database schema.
+- `prisma/seed.ts` - development seed data.
 
 ## 4. What Needs To Be Done
 
-The biggest current blocker is the database connection. A real PostgreSQL database is not connected yet. Docker was not installed on the machine earlier, so local Postgres could not be started. The next practical option is to use Supabase or Neon and put the connection string in `DATABASE_URL`.
+The database blocker from earlier checkpoints is resolved: Postgres runs in Docker and the schema is pushed and seeded.
 
-Immediate next steps:
+Known gaps:
 
-1. Create a PostgreSQL database using Supabase or Neon.
-2. Add the real connection string to `.env` as `DATABASE_URL`.
-3. Run `npm run db:push` to push the Prisma schema.
-4. Start the app with `npm run dev`.
-5. Test signup and login with real persistence.
+- Mentor profile editing does not exist. Mentors can view their profile but not change it.
+- Candidates cannot cancel a sent request, even though `MentorRequestStatus.CANCELLED` exists in the schema.
+- There is no automated test suite. Verification so far has been manual smoke testing.
+- ESLint is not configured. The `lint` script still calls `next lint`, which Next 16 removed.
+- The project uses `prisma db push` instead of real migrations.
+- The admin mentor list is capped at 50 rows with no pagination.
+- Rejecting a mentor deliberately leaves their existing Hustles running. There is no admin tool to pause or reassign those.
 
-Short-term product work:
-
-- Build candidate profile completion flow.
-- Add resume text or upload placeholder.
-- Add skills, target companies, preferred domains, location preference, salary range, and job type preference fields.
-- Build mentor matching based on domain, target companies, experience, and candidate preferences.
-- Show anonymized mentor previews before approval.
-- Build mentor request flow.
-- Let mentors approve or decline requests.
-- Auto-create a Hustle when a mentor approves a request.
-- Add Hustle workspace pages for candidate and mentor.
-
-Medium-term product work:
-
-- Let mentors post job leads inside Hustles.
-- Let mentors add contacts, comments, and follow-up details.
-- Let candidates update lead status.
-- Track progress updates whenever lead status changes.
-- Build mentor dashboard with pending requests, active Hustles, and candidate progress.
-- Build candidate dashboard with profile status, recommended mentors, pending requests, and active Hustles.
-- Enforce product limits such as max 5 active Hustles per candidate and max 10 active candidates per mentor.
+Open product question: KT says full mentor details may be revealed after approval, but the code still anonymises the mentor inside the Hustle workspace for candidates. Pick one and make the code and this document agree.
 
 Long-term product work:
 
-- Build super admin dashboard.
-- Add mentor verification workflow.
-- Add email notifications.
-- Add file storage for resumes.
-- Add LLM-based resume analysis.
-- Add deployment using Vercel or Render.
-- Add paid features such as candidate premium, paid mentor sessions, AI resume/job matching, and company hiring plans.
+- Email notifications for request decisions and verification outcomes.
+- File storage for resumes.
+- LLM-based resume analysis and job matching.
+- Deployment on Vercel or Render with Supabase or Neon.
+- Paid features: candidate premium, paid mentor sessions, AI add-ons, company hiring plans.
 
 ## 5. Technical Notes For Interns
 
@@ -150,13 +145,19 @@ Do not expose full mentor details before a request is approved. This is a produc
 
 Before building a feature, check whether the database schema already supports it. Many future models already exist in Prisma, even if the pages and APIs are not implemented yet.
 
+Domain rules live in `src/domain`. Before adding a rule to a page or an API route, check whether it belongs there instead. Verification rules are in `src/domain/verification.ts`, dashboard aggregation in `src/domain/dashboard.ts`, and the anonymised mentor shape in `src/domain/mentor-preview.ts`. Keeping the anonymised preview type in one place is what stops a private mentor field leaking into a candidate-facing response by accident.
+
 Useful commands:
 
 ```bash
+docker compose up -d   # start local PostgreSQL
 npm install
+npm run db:push        # sync the Prisma schema
+npm run db:seed        # load development data
 npm run dev
 npm run typecheck
 npm run build
-npm run db:push
 ```
+
+Seed accounts all use the password `Switchkrr@123`. See `CHECKPOINT.txt` for the full list; the useful ones are `admin@switchkrr.test`, `nisha@switchkrr.test` (verified mentor with an active Hustle), `ishita@switchkrr.test` (mentor pending verification) and `riya@switchkrr.test` (candidate with leads and follow-ups).
 
