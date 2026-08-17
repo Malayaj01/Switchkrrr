@@ -93,6 +93,8 @@ Seed accounts all use the password `Switchkrr@123`. Sign in as
 npm run dev
 npm run lint
 npm run typecheck
+npm test                                    # 116 unit tests, no database needed
+npm run test:coverage
 npm run build
 
 npm run db:migrate -- --name what_changed   # create and apply a migration

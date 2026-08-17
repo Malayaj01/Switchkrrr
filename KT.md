@@ -117,11 +117,11 @@ The database blocker from earlier checkpoints is resolved: Postgres runs in Dock
 
 Known gaps:
 
-- Mentor profile editing does not exist. Mentors can view their profile but not change it.
-- Candidates cannot cancel a sent request, even though `MentorRequestStatus.CANCELLED` exists in the schema.
-- There is no automated test suite. Verification so far has been manual smoke testing.
-- The admin mentor list is capped at 50 rows with no pagination.
-- Rejecting a mentor deliberately leaves their existing Hustles running. There is no admin tool to pause or reassign those.
+- Test coverage stops at the domain layer. `npm test` runs 116 Vitest tests over `src/domain` and `src/lib/format.ts` with about 91% statement coverage, but no route, database or browser behaviour is covered automatically.
+- Resume upload does not exist. `CandidateProfile.resumeUrl` is in the schema but unused, so candidates can only paste resume text.
+- No email is ever sent. Request decisions and verification outcomes are silent, and there is no password reset flow.
+- Admins can verify, reassign and search, but cannot suspend or delete a user.
+- Auth throttling only honours `x-forwarded-for` when `TRUST_PROXY_HEADERS=true` or when running on Vercel. Behind any other proxy that variable must be set, otherwise every request is bucketed together as a direct connection.
 
 Open product question: KT says full mentor details may be revealed after approval, but the code still anonymises the mentor inside the Hustle workspace for candidates. Pick one and make the code and this document agree.
 
@@ -155,8 +155,14 @@ npm run db:seed        # load development data
 npm run dev
 npm run lint
 npm run typecheck
+npm test               # Vitest, no database needed
+npm run test:coverage
 npm run build
 ```
+
+Domain logic is unit tested. When you add a rule to `src/domain`, add a test
+beside it as `*.test.ts` — those tests run without a database or a server, so
+there is no reason to skip them.
 
 Schema changes go through migrations, not `db push`. Edit `prisma/schema.prisma`,
 then run `npm run db:migrate -- --name what_changed` to generate and apply a

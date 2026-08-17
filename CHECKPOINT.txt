@@ -60,15 +60,33 @@ Navigation
   Dashboard, Profile, Find mentors, Requests, Hustles, Admin.
 - Shared DashboardShell/MetricGrid/Panel components used by every page.
 
+Also built since
+----------------
+- Hustle lifecycle: pause, complete and reopen. Only ACTIVE Hustles consume
+  capacity, and every transition back to ACTIVE re-checks both caps, so
+  pause/reopen cannot be used to bypass the limits. Paused and completed
+  Hustles are read-only: no new leads, no status updates.
+- Candidates can cancel a pending mentor request.
+- Mentors can edit their own profile. Changing company, designation, experience
+  or domain returns the profile to the verification queue.
+- Admin user directory and admin lead search, both paginated and searchable.
+- Admins can reassign a rejected mentor's Hustle to a verified mentor.
+- Auth throttling on login and signup, backed by an AuthAttempt table.
+- error, loading, not-found and global-error boundaries across the app.
+- Vitest suite: 116 tests over the domain and formatting layers,
+  91% statement coverage. Run with `npm test`.
+
 What is pending
 ---------------
-- Mentor profile editing (mentors can view but not edit their profile).
-- Candidate cannot cancel a sent mentor request (MentorRequestStatus.CANCELLED
-  exists in the schema but no API or UI uses it).
-- No automated test suite. Verification was done with manual smoke scripts.
-- Pagination: the admin mentor list is capped at 50 rows with no paging.
-- Rejecting a mentor does not touch their existing Hustles by design. There is
-  no admin control to pause or reassign those Hustles yet.
+- No API or end-to-end test coverage. The Vitest suite covers pure domain logic
+  only; route behaviour has been verified manually with throwaway scripts.
+- Auth throttling trusts x-forwarded-for only when TRUST_PROXY_HEADERS=true or
+  running on Vercel. Set that variable if deploying behind a different proxy.
+- Resume upload is not built. CandidateProfile.resumeUrl exists but is unused;
+  candidates can only paste resume text.
+- No email notifications, so nobody is told when a request is decided or a
+  mentor is verified. Password reset does not exist either.
+- Admin cannot suspend or delete a user.
 
 Open product question
 ---------------------
