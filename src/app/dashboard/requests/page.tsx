@@ -1,9 +1,12 @@
 import { UserRole } from "@prisma/client";
-import { BriefcaseBusiness, Clock3, Target, UsersRound } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Clock3, Target, UsersRound } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DashboardShell, EmptyState, Panel } from "@/components/dashboard/dashboard-shell";
 import { CapacityBar } from "@/components/dashboard/dashboard-shell";
 import { RequestDecisionActions } from "@/components/mentor/request-decision-actions";
+import { CancelRequestButton } from "@/components/candidate/cancel-request-button";
 import { toCapacity } from "@/domain/dashboard";
 import { platformLimits } from "@/domain/limits";
 import { verificationLabel } from "@/domain/verification";
@@ -77,7 +80,10 @@ async function CandidateRequests({ userId }: { userId: string }) {
                   </p>
                   {request.candidateMessage && <p className="muted">You wrote: {request.candidateMessage}</p>}
                 </div>
-                <span className="request-status-chip pending">Pending</span>
+                <div className="panel-actions">
+                  <span className="request-status-chip pending">Pending</span>
+                  <CancelRequestButton requestId={request.id} />
+                </div>
               </div>
             ))}
           </div>
@@ -99,8 +105,17 @@ async function CandidateRequests({ userId }: { userId: string }) {
                   </p>
                   {request.mentorResponse && <p className="muted">Mentor replied: {request.mentorResponse}</p>}
                 </div>
-                <span className={`request-status-chip ${request.status.toLowerCase()}`}>
-                  {formatEnumLabel(request.status)}
+                <span className="inline-chips">
+                  <span className={`request-status-chip ${request.status.toLowerCase()}`}>
+                    {formatEnumLabel(request.status)}
+                  </span>
+                  {/* An approved request always has a Hustle, so link straight to it. */}
+                  {request.hustle && (
+                    <Link className="button secondary" href={`/dashboard/hustles/${request.hustle.id}` as Route}>
+                      Open Hustle
+                      <ArrowRight size={15} />
+                    </Link>
+                  )}
                 </span>
               </div>
             ))}

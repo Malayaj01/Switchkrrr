@@ -9,6 +9,7 @@ import {
   UserRoundCog,
   UsersRound,
 } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { DashboardShell, EmptyState, MetricGrid, Panel } from "@/components/dashboard/dashboard-shell";
 import { formatDateTime, formatEnumLabel, leadStatusClassName } from "@/lib/format";
@@ -36,6 +37,8 @@ export async function AdminDashboard({ name }: AdminDashboardProps) {
     totalHustles,
     totalLeads,
     leadsByStatus,
+    leadsByCompany,
+    leadsByDomain,
     verificationQueue,
     recentSignups,
     recentRequests,
@@ -49,6 +52,19 @@ export async function AdminDashboard({ name }: AdminDashboardProps) {
     prisma.hustle.count(),
     prisma.lead.count(),
     prisma.lead.groupBy({ by: ["status"], _count: { status: true } }),
+    prisma.lead.groupBy({
+      by: ["company"],
+      _count: { company: true },
+      orderBy: { _count: { company: "desc" } },
+      take: 6,
+    }),
+    prisma.lead.groupBy({
+      by: ["domain"],
+      _count: { domain: true },
+      orderBy: { _count: { domain: "desc" } },
+      where: { domain: { not: null } },
+      take: 6,
+    }),
     prisma.mentorProfile.findMany({
       where: { verificationStatus: VerificationStatus.PENDING },
       orderBy: { createdAt: "asc" },
@@ -218,6 +234,50 @@ export async function AdminDashboard({ name }: AdminDashboardProps) {
             </div>
           ) : (
             <EmptyState>No leads posted yet.</EmptyState>
+          )}
+        </Panel>
+      </section>
+
+      <section className="dashboard-grid-two">
+        <Panel eyebrow="Demand" title="Top companies">
+          {leadsByCompany.length > 0 ? (
+            <div className="request-status-list">
+              {leadsByCompany.map((row) => (
+                <Link
+                  className="request-status-row"
+                  href={`/dashboard/admin/leads?q=${encodeURIComponent(row.company)}` as Route}
+                  key={row.company}
+                >
+                  <strong>{row.company}</strong>
+                  <span className="request-status-chip">
+                    {row._count.company} lead{row._count.company === 1 ? "" : "s"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No leads posted yet.</EmptyState>
+          )}
+        </Panel>
+
+        <Panel eyebrow="Demand" title="Top domains">
+          {leadsByDomain.length > 0 ? (
+            <div className="request-status-list">
+              {leadsByDomain.map((row) => (
+                <Link
+                  className="request-status-row"
+                  href={`/dashboard/admin/leads?q=${encodeURIComponent(row.domain ?? "")}` as Route}
+                  key={row.domain}
+                >
+                  <strong>{row.domain}</strong>
+                  <span className="request-status-chip">
+                    {row._count.domain} lead{row._count.domain === 1 ? "" : "s"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No leads have a domain set.</EmptyState>
           )}
         </Panel>
       </section>

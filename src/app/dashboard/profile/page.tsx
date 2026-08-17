@@ -2,6 +2,7 @@ import { UserRole, VerificationStatus } from "@prisma/client";
 import { ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { CandidateProfileForm } from "@/components/candidate/profile-form";
+import { MentorProfileForm } from "@/components/mentor/profile-form";
 import { DashboardShell, Panel, SummaryItem } from "@/components/dashboard/dashboard-shell";
 import { verificationChipClassName, verificationLabel } from "@/domain/verification";
 import { formatDateTime, formatLongDate } from "@/lib/format";
@@ -113,10 +114,9 @@ async function MentorProfile({ userId }: { userId: string }) {
           </div>
         )}
 
-        <p className="muted">
-          Mentor profile editing is not built yet. Ask an admin to update these details for now.
-        </p>
       </Panel>
+
+      <MentorProfileForm profile={mentor} />
     </DashboardShell>
   );
 }

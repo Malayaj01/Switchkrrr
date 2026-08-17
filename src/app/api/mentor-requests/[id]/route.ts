@@ -1,5 +1,5 @@
 import { MentorRequestStatus, UserRole } from "@prisma/client";
-import { fail, handleRouteError, ok } from "@/lib/http";
+import { ApiError, fail, handleRouteError, ok } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 import { platformLimits } from "@/domain/limits";
@@ -41,15 +41,15 @@ export async function PATCH(request: Request, context: RouteContext) {
       });
 
       if (!mentorRequest) {
-        throw new DecisionError("Mentor request not found.", 404);
+        throw new ApiError("Mentor request not found.", 404);
       }
 
       if (mentorRequest.mentorId !== mentor.id) {
-        throw new DecisionError("You can only decide requests assigned to you.", 403);
+        throw new ApiError("You can only decide requests assigned to you.", 403);
       }
 
       if (mentorRequest.status !== MentorRequestStatus.PENDING) {
-        throw new DecisionError("Only pending requests can be approved or declined.", 400);
+        throw new ApiError("Only pending requests can be approved or declined.", 400);
       }
 
       const updatedRequest = await tx.mentorRequest.update({
@@ -87,20 +87,31 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return ok(result);
   } catch (error) {
-    if (error instanceof DecisionError) {
-      return fail(error.message, error.status);
-    }
-
     return handleRouteError(error);
   }
 }
 
-class DecisionError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
-    super(message);
+export async function DELETE(_request: Request, context: RouteContext) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return fail("Not authenticated.", 401);
+    if (user.role !== UserRole.CANDIDATE) return fail("Only candidates can cancel requests.", 403);
+
+    const { id } = await context.params;
+    const candidate = await prisma.candidateProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
+    if (!candidate) return fail("Candidate profile not found.", 404);
+
+    const request = await prisma.mentorRequest.findUnique({ where: { id }, select: { id: true, candidateId: true, status: true } });
+    if (!request) return fail("Mentor request not found.", 404);
+    if (request.candidateId !== candidate.id) return fail("You can only cancel your own requests.", 403);
+    if (request.status !== MentorRequestStatus.PENDING) return fail("Only pending requests can be cancelled.", 409);
+
+    const mentorRequest = await prisma.mentorRequest.update({
+      where: { id },
+      data: { status: MentorRequestStatus.CANCELLED },
+    });
+    return ok({ mentorRequest });
+  } catch (error) {
+    return handleRouteError(error);
   }
 }
-

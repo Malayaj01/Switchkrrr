@@ -21,6 +21,7 @@ export async function POST(request: Request, context: RouteContext) {
       where: { id },
       select: {
         id: true,
+        status: true,
         mentor: {
           select: {
             userId: true,
@@ -31,6 +32,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (!hustle) return fail("Hustle not found.", 404);
     if (hustle.mentor.userId !== user.id) return fail("You can only add leads to your own Hustles.", 403);
+    if (hustle.status !== "ACTIVE") return fail("Leads can only be added to an active Hustle.", 409);
 
     const lead = await prisma.lead.create({
       data: {
@@ -55,4 +57,3 @@ export async function POST(request: Request, context: RouteContext) {
     return handleRouteError(error);
   }
 }
-

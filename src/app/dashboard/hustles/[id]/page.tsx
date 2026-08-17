@@ -6,6 +6,8 @@ import { notFound, redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { LeadCreateForm } from "@/components/hustle/lead-create-form";
 import { LeadStatusForm } from "@/components/hustle/lead-status-form";
+import { HustleStatusActions } from "@/components/hustle/hustle-status-actions";
+import { ReassignHustleForm } from "@/components/admin/reassign-hustle-form";
 import { summarizeLeads } from "@/domain/dashboard";
 import {
   describeFollowUp,
@@ -61,6 +63,7 @@ export default async function HustleDetailPage({ params }: PageProps) {
   const isCandidate = user.role === UserRole.CANDIDATE && hustle.candidate.userId === user.id;
   const isAdmin = user.role === UserRole.ADMIN;
   if (!isMentor && !isCandidate && !isAdmin) redirect("/dashboard");
+  const replacementMentors = isAdmin && hustle.mentor.verificationStatus === "REJECTED" ? await prisma.mentorProfile.findMany({ where: { verificationStatus: "VERIFIED", id: { not: hustle.mentorId } }, select: { id: true, currentCompany: true, user: { select: { name: true } } }, orderBy: { user: { name: "asc" } } }) : [];
 
   const now = new Date();
   const leadSummary = summarizeLeads(hustle.leads);
@@ -95,6 +98,8 @@ export default async function HustleDetailPage({ params }: PageProps) {
             </div>
           </section>
 
+          {isAdmin && replacementMentors.length > 0 && <section className="dashboard-panel card"><p className="eyebrow">Admin control</p><h2>Rejected mentor</h2><p className="muted">Pause this workspace or reassign it to a verified mentor.</p><ReassignHustleForm hustleId={hustle.id} mentors={replacementMentors.map((mentor) => ({ id: mentor.id, name: mentor.user.name, company: mentor.currentCompany }))} /></section>}
+
           <section className="dashboard-panel card">
             <h2>Mentor</h2>
             <p className="muted">{isCandidate ? `${hustle.mentor.domain} mentor` : hustle.mentor.user.name}</p>
@@ -107,7 +112,16 @@ export default async function HustleDetailPage({ params }: PageProps) {
             </div>
           </section>
 
-          {isMentor && <LeadCreateForm hustleId={hustle.id} />}
+          <section className="dashboard-panel card">
+            <p className="eyebrow">Workspace status</p>
+            <h2>{formatEnumLabel(hustle.status)}</h2>
+            <p className="muted">
+              Paused and completed Hustles stay available as history and no longer consume either participant&apos;s capacity.
+            </p>
+            <HustleStatusActions hustleId={hustle.id} status={hustle.status} />
+          </section>
+
+          {isMentor && hustle.status === "ACTIVE" && <LeadCreateForm hustleId={hustle.id} />}
         </aside>
 
         <section className="workspace-main">
@@ -190,7 +204,7 @@ export default async function HustleDetailPage({ params }: PageProps) {
                     </div>
                   )}
 
-                  {isCandidate && (
+                  {isCandidate && hustle.status === "ACTIVE" && (
                     <LeadStatusForm currentComment={lead.candidateComment} currentStatus={lead.status} leadId={lead.id} />
                   )}
 

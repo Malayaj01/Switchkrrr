@@ -1,7 +1,7 @@
 "use client";
 
 import { UserRole } from "@prisma/client";
-import { BriefcaseBusiness, Handshake, Inbox, LayoutDashboard, ShieldCheck, UserRoundCog } from "lucide-react";
+import { BriefcaseBusiness, Handshake, Inbox, LayoutDashboard, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -52,6 +52,18 @@ const navItems: NavItem[] = [
     href: "/dashboard/admin/mentors",
     icon: <ShieldCheck size={16} />,
     label: "Admin",
+    roles: [UserRole.ADMIN],
+  },
+  {
+    href: "/dashboard/admin/users",
+    icon: <UsersRound size={16} />,
+    label: "Users",
+    roles: [UserRole.ADMIN],
+  },
+  {
+    href: "/dashboard/admin/leads",
+    icon: <BriefcaseBusiness size={16} />,
+    label: "Leads",
     roles: [UserRole.ADMIN],
   },
 ];

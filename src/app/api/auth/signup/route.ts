@@ -1,14 +1,17 @@
 import { UserRole } from "@prisma/client";
 import { randomBytes } from "node:crypto";
-import { handleRouteError, ok } from "@/lib/http";
+import { fail, handleRouteError, ok } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/security/password";
 import { createSession } from "@/lib/security/session";
 import { signupSchema } from "@/validation/auth";
+import { authRateLimitMessage, clearAuthFailures, isAuthRateLimited, recordAuthFailure } from "@/lib/security/auth-rate-limit";
 
 export async function POST(request: Request) {
   try {
     const payload = signupSchema.parse(await request.json());
+    const rateLimit = await isAuthRateLimited(request, "signup", payload.email);
+    if (rateLimit.limited) return fail(authRateLimitMessage, 429);
     const passwordHash = await hashPassword(payload.password);
 
     const existing = await prisma.user.findFirst({
@@ -19,7 +22,8 @@ export async function POST(request: Request) {
     });
 
     if (existing) {
-      throw new Error("An account already exists with this email or username.");
+      await recordAuthFailure(rateLimit, "signup", existing.id);
+      return fail("An account already exists with this email or username.", 409);
     }
 
     const user = await prisma.user.create({
@@ -68,6 +72,7 @@ export async function POST(request: Request) {
       },
     });
 
+    await clearAuthFailures(rateLimit, "signup");
     await createSession(user.id);
 
     return ok({ user: sanitizeUser(user) }, 201);

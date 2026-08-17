@@ -10,9 +10,7 @@ import { formatDateTime, formatList, formatLongDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 
-type PageProps = {
-  searchParams: Promise<{ status?: string; q?: string }>;
-};
+type PageProps = { searchParams: Promise<{ status?: string; q?: string; page?: string }> };
 
 const filters = [
   { key: "PENDING", label: "Pending" },
@@ -34,6 +32,8 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const statusFilter = parseStatusFilter(params.status);
   const query = (params.q ?? "").trim();
+  const page = Math.max(1, Number(params.page) || 1);
+  const pageSize = 25;
 
   const searchFilter: Prisma.MentorProfileWhereInput = query
     ? {
@@ -48,7 +48,7 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
       }
     : {};
 
-  const [mentors, counts] = await Promise.all([
+  const [mentors, counts, total] = await Promise.all([
     prisma.mentorProfile.findMany({
       where: {
         ...searchFilter,
@@ -57,7 +57,7 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
       // Oldest first while reviewing the queue so nobody waits indefinitely;
       // newest decisions first when looking at already-reviewed mentors.
       orderBy: statusFilter === "PENDING" ? { createdAt: "asc" } : { updatedAt: "desc" },
-      take: 50,
+      skip: (page - 1) * pageSize, take: pageSize,
       include: {
         user: { select: { name: true, email: true, createdAt: true } },
         verifiedBy: { select: { name: true } },
@@ -65,17 +65,31 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
       },
     }),
     prisma.mentorProfile.groupBy({ by: ["verificationStatus"], _count: { verificationStatus: true } }),
+    prisma.mentorProfile.count({ where: { ...searchFilter, ...(statusFilter === "ALL" ? {} : { verificationStatus: statusFilter as VerificationStatus }) } }),
   ]);
 
   const countFor = (status: VerificationStatus) =>
     counts.find((row) => row.verificationStatus === status)?._count.verificationStatus ?? 0;
   const totalMentors = counts.reduce((total, row) => total + row._count.verificationStatus, 0);
 
-  function filterHref(key: string) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  function buildHref(statusKey: string, targetPage: number) {
     const search = new URLSearchParams();
-    search.set("status", key);
+    search.set("status", statusKey);
     if (query) search.set("q", query);
+    search.set("page", String(targetPage));
     return `/dashboard/admin/mentors?${search.toString()}` as Route;
+  }
+
+  // Changing the filter always returns to page one, otherwise a deep page number
+  // carries over to a shorter list and renders an empty screen.
+  function filterHref(key: string) {
+    return buildHref(key, 1);
+  }
+
+  function pageHref(targetPage: number) {
+    return buildHref(statusFilter, targetPage);
   }
 
   return (
@@ -199,6 +213,21 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
               : "Nothing to review here right now."}
           </EmptyState>
         </Panel>
+      )}
+      {totalPages > 1 && (
+        <div className="pagination-row">
+          {page > 1 ? (
+            <Link className="button secondary" href={pageHref(page - 1)}>Previous</Link>
+          ) : (
+            <span aria-disabled="true" className="button secondary is-disabled">Previous</span>
+          )}
+          <span className="muted">Page {page} of {totalPages}</span>
+          {page < totalPages ? (
+            <Link className="button secondary" href={pageHref(page + 1)}>Next</Link>
+          ) : (
+            <span aria-disabled="true" className="button secondary is-disabled">Next</span>
+          )}
+        </div>
       )}
     </DashboardShell>
   );
