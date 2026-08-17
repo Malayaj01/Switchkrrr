@@ -23,11 +23,11 @@ export async function POST(request: Request) {
     });
 
     if (!user || !(await verifyPassword(payload.password, user.passwordHash))) {
-      await recordAuthFailure(rateLimit.key, "login", user?.id);
+      await recordAuthFailure(rateLimit, "login", user?.id);
       return fail("Invalid email, username, or password.", 401);
     }
 
-    await clearAuthFailures(rateLimit.key, "login");
+    await clearAuthFailures(rateLimit, "login");
     await createSession(user.id);
 
     return ok({ user: sanitizeUser(user) });

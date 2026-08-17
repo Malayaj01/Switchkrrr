@@ -1,5 +1,5 @@
 import { MentorRequestStatus, UserRole } from "@prisma/client";
-import { fail, handleRouteError, ok } from "@/lib/http";
+import { ApiError, fail, handleRouteError, ok } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 import { platformLimits } from "@/domain/limits";
@@ -41,15 +41,15 @@ export async function PATCH(request: Request, context: RouteContext) {
       });
 
       if (!mentorRequest) {
-        throw new DecisionError("Mentor request not found.", 404);
+        throw new ApiError("Mentor request not found.", 404);
       }
 
       if (mentorRequest.mentorId !== mentor.id) {
-        throw new DecisionError("You can only decide requests assigned to you.", 403);
+        throw new ApiError("You can only decide requests assigned to you.", 403);
       }
 
       if (mentorRequest.status !== MentorRequestStatus.PENDING) {
-        throw new DecisionError("Only pending requests can be approved or declined.", 400);
+        throw new ApiError("Only pending requests can be approved or declined.", 400);
       }
 
       const updatedRequest = await tx.mentorRequest.update({
@@ -87,10 +87,6 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return ok(result);
   } catch (error) {
-    if (error instanceof DecisionError) {
-      return fail(error.message, error.status);
-    }
-
     return handleRouteError(error);
   }
 }
@@ -117,14 +113,5 @@ export async function DELETE(_request: Request, context: RouteContext) {
     return ok({ mentorRequest });
   } catch (error) {
     return handleRouteError(error);
-  }
-}
-
-class DecisionError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
-    super(message);
   }
 }

@@ -1,5 +1,5 @@
 import { UserRole } from "@prisma/client";
-import { fail, handleRouteError, ok } from "@/lib/http";
+import { ApiError, fail, handleRouteError, ok } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/security/session";
 import { leadStatusUpdateSchema } from "@/validation/lead";
@@ -34,12 +34,12 @@ export async function PATCH(request: Request, context: RouteContext) {
         },
       });
 
-      if (!lead) throw new LeadUpdateError("Lead not found.", 404);
+      if (!lead) throw new ApiError("Lead not found.", 404);
       if (lead.hustle.candidate.userId !== user.id) {
-        throw new LeadUpdateError("You can only update leads assigned to your Hustles.", 403);
+        throw new ApiError("You can only update leads assigned to your Hustles.", 403);
       }
       if (lead.hustle.status !== "ACTIVE") {
-        throw new LeadUpdateError("Lead progress can only be updated in an active Hustle.", 409);
+        throw new ApiError("Lead progress can only be updated in an active Hustle.", 409);
       }
 
       const updatedLead = await tx.lead.update({
@@ -68,16 +68,6 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return ok(result);
   } catch (error) {
-    if (error instanceof LeadUpdateError) return fail(error.message, error.status);
     return handleRouteError(error);
-  }
-}
-
-class LeadUpdateError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
-    super(message);
   }
 }

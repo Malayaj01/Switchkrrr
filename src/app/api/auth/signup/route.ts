@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     });
 
     if (existing) {
-      await recordAuthFailure(rateLimit.key, "signup", existing.id);
+      await recordAuthFailure(rateLimit, "signup", existing.id);
       return fail("An account already exists with this email or username.", 409);
     }
 
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       },
     });
 
-    await clearAuthFailures(rateLimit.key, "signup");
+    await clearAuthFailures(rateLimit, "signup");
     await createSession(user.id);
 
     return ok({ user: sanitizeUser(user) }, 201);
