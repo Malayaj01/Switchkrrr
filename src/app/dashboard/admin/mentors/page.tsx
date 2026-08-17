@@ -72,11 +72,24 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
     counts.find((row) => row.verificationStatus === status)?._count.verificationStatus ?? 0;
   const totalMentors = counts.reduce((total, row) => total + row._count.verificationStatus, 0);
 
-  function filterHref(key: string) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  function buildHref(statusKey: string, targetPage: number) {
     const search = new URLSearchParams();
-    search.set("status", key);
+    search.set("status", statusKey);
     if (query) search.set("q", query);
-    search.set("page", "1"); return `/dashboard/admin/mentors?${search.toString()}` as Route;
+    search.set("page", String(targetPage));
+    return `/dashboard/admin/mentors?${search.toString()}` as Route;
+  }
+
+  // Changing the filter always returns to page one, otherwise a deep page number
+  // carries over to a shorter list and renders an empty screen.
+  function filterHref(key: string) {
+    return buildHref(key, 1);
+  }
+
+  function pageHref(targetPage: number) {
+    return buildHref(statusFilter, targetPage);
   }
 
   return (
@@ -201,7 +214,21 @@ export default async function AdminMentorsPage({ searchParams }: PageProps) {
           </EmptyState>
         </Panel>
       )}
-      {total > pageSize && <div className="panel-actions"><Link className="button secondary" href={`/dashboard/admin/mentors?status=${statusFilter}&q=${encodeURIComponent(query)}&page=${Math.max(1, page - 1)}` as Route}>Previous</Link><span className="muted">Page {page} of {Math.ceil(total / pageSize)}</span><Link className="button secondary" href={`/dashboard/admin/mentors?status=${statusFilter}&q=${encodeURIComponent(query)}&page=${Math.min(Math.ceil(total / pageSize), page + 1)}` as Route}>Next</Link></div>}
+      {totalPages > 1 && (
+        <div className="pagination-row">
+          {page > 1 ? (
+            <Link className="button secondary" href={pageHref(page - 1)}>Previous</Link>
+          ) : (
+            <span aria-disabled="true" className="button secondary is-disabled">Previous</span>
+          )}
+          <span className="muted">Page {page} of {totalPages}</span>
+          {page < totalPages ? (
+            <Link className="button secondary" href={pageHref(page + 1)}>Next</Link>
+          ) : (
+            <span aria-disabled="true" className="button secondary is-disabled">Next</span>
+          )}
+        </div>
+      )}
     </DashboardShell>
   );
 }

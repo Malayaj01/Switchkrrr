@@ -25,7 +25,21 @@ export default async function AdminUsersPage({ searchParams }: Props) {
     <form action="/dashboard/admin/users" className="filter-search card" method="get"><input defaultValue={q} name="q" placeholder="Name, email, company, role or domain" type="search" /><select defaultValue={role ?? ""} name="role"><option value="">All roles</option>{Object.values(UserRole).map((value) => <option key={value} value={value}>{value}</option>)}</select><button className="button" type="submit">Search</button></form>
     <Panel eyebrow="Directory" title={`${total} users`}>
       {users.length ? <div className="request-status-list">{users.map((user) => <div className="request-status-row" key={user.id}><div><strong>{user.name}</strong><p className="muted">@{user.username} · {user.email} · joined {formatLongDate(user.createdAt)}</p><p className="muted">{user.candidateProfile ? `${user.candidateProfile.goalRole} · ${user.candidateProfile.currentCompany}` : user.mentorProfile ? `${user.mentorProfile.domain} · ${user.mentorProfile.currentCompany} · ${user.mentorProfile.verificationStatus}` : "Admin"}</p></div><span className="request-status-chip">{user.role}</span></div>)}</div> : <EmptyState>No users match this search.</EmptyState>}
-      {pages > 1 && <div className="panel-actions"><Link className="button secondary" aria-disabled={page === 1} href={href(Math.max(1, page - 1))}>Previous</Link><span className="muted">Page {page} of {pages}</span><Link className="button secondary" aria-disabled={page === pages} href={href(Math.min(pages, page + 1))}>Next</Link></div>}
+      {pages > 1 && (
+        <div className="pagination-row">
+          {page > 1 ? (
+            <Link className="button secondary" href={href(page - 1)}>Previous</Link>
+          ) : (
+            <span aria-disabled="true" className="button secondary is-disabled">Previous</span>
+          )}
+          <span className="muted">Page {page} of {pages}</span>
+          {page < pages ? (
+            <Link className="button secondary" href={href(page + 1)}>Next</Link>
+          ) : (
+            <span aria-disabled="true" className="button secondary is-disabled">Next</span>
+          )}
+        </div>
+      )}
     </Panel>
   </DashboardShell>;
 }

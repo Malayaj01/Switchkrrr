@@ -54,7 +54,18 @@ const navItems: NavItem[] = [
     label: "Admin",
     roles: [UserRole.ADMIN],
   },
-  { href: "/dashboard/admin/users", icon: <UsersRound size={16} />, label: "Users", roles: [UserRole.ADMIN] },
+  {
+    href: "/dashboard/admin/users",
+    icon: <UsersRound size={16} />,
+    label: "Users",
+    roles: [UserRole.ADMIN],
+  },
+  {
+    href: "/dashboard/admin/leads",
+    icon: <BriefcaseBusiness size={16} />,
+    label: "Leads",
+    roles: [UserRole.ADMIN],
+  },
 ];
 
 /**
